@@ -1,7 +1,8 @@
 export const inputClass =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none";
-export const labelClass = "mb-1 block text-sm font-medium text-gray-700";
+  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100";
+export const labelClass = "mb-1 block text-sm font-medium text-slate-700";
 export const primaryButtonClass =
-  "rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50";
+  "rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60";
 export const secondaryButtonClass =
-  "rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50";
+  "rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60";
+export const cardClass = "rounded-xl border border-indigo-100 bg-white p-4 shadow-sm";
