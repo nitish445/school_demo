@@ -24,7 +24,18 @@ This is being built incrementally. So far:
       behaviour notes, daily diary, leave approval, announcements)
 - [x] Parent web module (dashboard, attendance, academics, homework, school
       diary, announcements, fees, leave with certificate upload, profile)
-- [ ] Flutter mobile app (Teacher + Parent flows)
+- [x] Flutter mobile app: Teacher (dashboard, attendance, homework, marks) and
+      Parent (dashboard, attendance, homework, fees, profile) flows. Behaviour
+      notes, daily diary, leave approval/application, and full announcements
+      browsing are web-only for now -- add them to mobile the same way if you
+      need them there too.
+
+**Note on the Flutter app specifically**: I wrote it carefully but this
+environment has no Flutter/Dart SDK installed, so unlike the web app (which
+I built and lint-checked), I could not run `flutter analyze` or `flutter pub
+get` against it. Run those first thing after `flutter create .` below --
+there's a real chance of a small compile error I couldn't catch without the
+toolchain.
 
 ## Prerequisites you need to set up
 

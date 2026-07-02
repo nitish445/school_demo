@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
+import 'models/models.dart';
 import 'screens/login_screen.dart';
-import 'screens/parent/parent_dashboard_screen.dart';
-import 'screens/teacher/teacher_dashboard_screen.dart';
+import 'screens/parent/parent_home_shell.dart';
+import 'screens/teacher/teacher_home_shell.dart';
 import 'services/auth_service.dart';
 
 Future<void> main() async {
@@ -49,9 +50,9 @@ class RootRouter extends StatelessWidget {
     switch (auth.role) {
       case AppRole.classTeacher:
       case AppRole.subjectTeacher:
-        return const TeacherDashboardScreen();
+        return const TeacherHomeShell();
       case AppRole.parent:
-        return const ParentDashboardScreen();
+        return const ParentHomeShell();
       case AppRole.admin:
       case AppRole.unknown:
         return const Scaffold(

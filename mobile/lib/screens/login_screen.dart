@@ -16,6 +16,13 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
   bool _submitting = false;
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
     setState(() {
       _error = null;
