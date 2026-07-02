@@ -1,11 +1,215 @@
 rules_version = '2';
 
-// Placeholder: deny all access until the role-based rules are added
-// (see task: "Auth, Firestore security rules, and role-claims Cloud Functions").
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    // ---- helpers -----------------------------------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function tokenSchoolId() {
+      return request.auth.token.schoolId;
+    }
+
+    function tokenRole() {
+      return request.auth.token.role;
+    }
+
+    function inSchool(schoolId) {
+      return signedIn() && tokenSchoolId() == schoolId;
+    }
+
+    function isAdmin(schoolId) {
+      return inSchool(schoolId) && tokenRole() == 'admin';
+    }
+
+    function isClassTeacher(schoolId) {
+      return inSchool(schoolId) && tokenRole() == 'classTeacher';
+    }
+
+    function isSubjectTeacher(schoolId) {
+      return inSchool(schoolId) && tokenRole() == 'subjectTeacher';
+    }
+
+    function isTeacher(schoolId) {
+      return isClassTeacher(schoolId) || isSubjectTeacher(schoolId);
+    }
+
+    function isParent(schoolId) {
+      return inSchool(schoolId) && tokenRole() == 'parent';
+    }
+
+    function teacherDoc(schoolId) {
+      return get(/databases/$(database)/documents/schools/$(schoolId)/teachers/$(request.auth.uid)).data;
+    }
+
+    function parentDoc(schoolId) {
+      return get(/databases/$(database)/documents/schools/$(schoolId)/parents/$(request.auth.uid)).data;
+    }
+
+    // Class teacher's own home-room class.
+    function isMyClass(schoolId, classId) {
+      return isClassTeacher(schoolId) && teacherDoc(schoolId).classTeacherOf == classId;
+    }
+
+    // Subject teacher teaches `subjectId` in `classId`.
+    function teachesClassSubject(schoolId, classId, subjectId) {
+      return isSubjectTeacher(schoolId) &&
+        teacherDoc(schoolId).assignments.hasAny([{'classId': classId, 'subjectId': subjectId}]);
+    }
+
+    // Subject teacher teaches somewhere in `classId` (any subject). Reads the
+    // denormalized `assignedClassIds` list (kept in sync with `assignments`
+    // by the setTeacherAssignments Cloud Function) since the rules language
+    // has no way to filter a list of maps by a single key.
+    function teachesInClass(schoolId, classId) {
+      return isSubjectTeacher(schoolId) && classId in teacherDoc(schoolId).assignedClassIds;
+    }
+
+    function isMyChild(schoolId, studentId) {
+      return isParent(schoolId) && studentId in parentDoc(schoolId).childStudentIds;
+    }
+
+    function isMyChildrenClass(schoolId, studentIds) {
+      return isParent(schoolId) && studentIds.hasAny(parentDoc(schoolId).childStudentIds);
+    }
+
+    function studentClassId(schoolId, studentId) {
+      return get(/databases/$(database)/documents/schools/$(schoolId)/students/$(studentId)).data.classId;
+    }
+
+    // ---- top-level users (auth/profile pointer, managed by Cloud Functions) ----
+
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin(resource.data.schoolId));
+      allow list: if false;
+      allow write: if false; // only Cloud Functions (Admin SDK) write these
+    }
+
+    match /schools/{schoolId} {
+      allow read: if inSchool(schoolId);
+      allow write: if isAdmin(schoolId);
+
+      // ---- staff / parent profiles (managed by Cloud Functions) ----
+
+      match /teachers/{teacherId} {
+        allow get: if isAdmin(schoolId) || request.auth.uid == teacherId;
+        allow list: if isAdmin(schoolId);
+        allow write: if false;
+      }
+
+      match /parents/{parentId} {
+        allow get: if isAdmin(schoolId) || request.auth.uid == parentId;
+        allow list: if isAdmin(schoolId);
+        allow write: if false;
+      }
+
+      // ---- academic structure ----
+
+      match /classes/{classId} {
+        allow read: if isAdmin(schoolId) || isTeacher(schoolId) || isParent(schoolId);
+        allow write: if isAdmin(schoolId);
+      }
+
+      match /subjects/{subjectId} {
+        allow read: if inSchool(schoolId);
+        allow write: if isAdmin(schoolId);
+      }
+
+      // ---- students ----
+
+      match /students/{studentId} {
+        allow read: if isAdmin(schoolId)
+          || isTeacher(schoolId)
+          || isMyChild(schoolId, studentId);
+        allow create: if isAdmin(schoolId);
+        allow update: if isAdmin(schoolId) || isMyClass(schoolId, resource.data.classId);
+        allow delete: if isAdmin(schoolId);
+      }
+
+      // ---- attendance (one doc per student per day) ----
+
+      match /attendance/{recordId} {
+        allow read: if isAdmin(schoolId)
+          || isMyClass(schoolId, resource.data.classId)
+          || teachesInClass(schoolId, resource.data.classId)
+          || isMyChild(schoolId, resource.data.studentId);
+        allow create, update: if isAdmin(schoolId)
+          || isMyClass(schoolId, request.resource.data.classId)
+          || teachesInClass(schoolId, request.resource.data.classId);
+        allow delete: if isAdmin(schoolId) || isMyClass(schoolId, resource.data.classId);
+      }
+
+      // ---- homework ----
+
+      match /homework/{homeworkId} {
+        allow read: if isAdmin(schoolId)
+          || isMyClass(schoolId, resource.data.classId)
+          || teachesInClass(schoolId, resource.data.classId)
+          || isMyChildrenClass(schoolId, resource.data.studentIds);
+        allow create: if isAdmin(schoolId)
+          || isMyClass(schoolId, request.resource.data.classId)
+          || teachesClassSubject(schoolId, request.resource.data.classId, request.resource.data.subjectId);
+        // Owning teacher (or admin) can edit; parents may only ever touch the
+        // `submissions` map (marking their child's work complete), enforced
+        // by requiring every other field to stay unchanged.
+        allow update: if isAdmin(schoolId)
+          || resource.data.createdBy == request.auth.uid
+          || isMyClass(schoolId, resource.data.classId)
+          || (isMyChildrenClass(schoolId, resource.data.studentIds) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['submissions']));
+        allow delete: if isAdmin(schoolId) || resource.data.createdBy == request.auth.uid;
+      }
+
+      // ---- exams & marks ----
+
+      match /exams/{examId} {
+        allow read: if isAdmin(schoolId) || isTeacher(schoolId) ||
+          (isParent(schoolId) && resource.data.published == true);
+        allow write: if isAdmin(schoolId);
+      }
+
+      match /marks/{markId} {
+        allow read: if isAdmin(schoolId)
+          || isMyClass(schoolId, studentClassId(schoolId, resource.data.studentId))
+          || teachesInClass(schoolId, studentClassId(schoolId, resource.data.studentId))
+          || isMyChild(schoolId, resource.data.studentId);
+        allow write: if isAdmin(schoolId) || isTeacher(schoolId);
+      }
+
+      // ---- announcements (broadcast content, not sensitive) ----
+
+      match /announcements/{announcementId} {
+        allow read: if inSchool(schoolId);
+        allow create: if isAdmin(schoolId) || isTeacher(schoolId);
+        allow update, delete: if isAdmin(schoolId) || resource.data.createdBy == request.auth.uid;
+      }
+
+      // ---- fees ----
+
+      match /fees/{studentId} {
+        allow read: if isAdmin(schoolId) || isMyChild(schoolId, studentId);
+        allow write: if isAdmin(schoolId);
+
+        match /payments/{paymentId} {
+          allow read: if isAdmin(schoolId) || isMyChild(schoolId, studentId);
+          allow write: if isAdmin(schoolId);
+        }
+      }
+
+      // ---- leave ----
+
+      match /leaves/{leaveId} {
+        allow read: if isAdmin(schoolId)
+          || isMyClass(schoolId, resource.data.classId)
+          || isMyChild(schoolId, resource.data.studentId);
+        allow create: if isAdmin(schoolId) || isMyChild(schoolId, request.resource.data.studentId);
+        // Only the class teacher (or admin) can change status/approvedBy.
+        allow update: if isAdmin(schoolId) || isMyClass(schoolId, resource.data.classId);
+        allow delete: if isAdmin(schoolId);
+      }
     }
   }
 }

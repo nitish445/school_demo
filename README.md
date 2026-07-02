@@ -16,8 +16,8 @@ Cloud Messaging (push notifications).
 
 This is being built incrementally. So far:
 
-- [x] Repo scaffolding (this commit)
-- [ ] Auth + Firestore security rules + role-claims Cloud Functions
+- [x] Repo scaffolding
+- [x] Auth + Firestore/Storage security rules + role-claims Cloud Functions
 - [ ] Admin web module (students, teachers, parents, classes, attendance, exams, fees, announcements)
 - [ ] Class Teacher / Subject Teacher web module
 - [ ] Parent web module
@@ -44,6 +44,29 @@ Before running this for real, you'll need to:
    native `android/`, `ios/` platform folders (via `flutter create .` if you
    haven't already; those folders aren't checked into this repo since they're
    large generated boilerplate specific to your machine/Flutter version).
+6. **Create the first admin account** — there's no public sign-up, and every
+   other account is created by an admin, so the very first one needs a
+   one-time bootstrap script (see below).
+
+## Creating the first admin account
+
+Download a service account key (Firebase Console -> Project settings ->
+Service accounts -> Generate new private key), then:
+
+```bash
+cd firebase/functions
+npm install
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccountKey.json \
+  npm run bootstrap:admin -- \
+  --schoolId my-school --schoolName "My School" \
+  --email admin@example.com --password "ChangeMe123!" --name "Jane Doe"
+```
+
+This creates the `schools/{schoolId}` doc and a Firebase Auth admin account
+with the `admin` custom claim. Log in with that email/password on the web
+app's `/login` page. From there, use the Admin dashboard to create Teacher
+and Parent accounts (backed by the `createStaffOrParentAccount` Cloud
+Function) — no more manual scripts needed after this.
 
 ## Running the web app
 
@@ -67,8 +90,8 @@ cd firebase/functions && npm install && cd ../..
 firebase emulators:start
 ```
 
-This starts local Auth, Firestore, Storage, Functions, and Hosting
-emulators (see `firebase.json`) without touching a live project.
+This starts local Auth, Firestore, Storage, and Functions emulators (see
+`firebase.json`) without touching a live project.
 
 ## Running the mobile app
 
@@ -84,5 +107,7 @@ flutter run
 
 ```bash
 firebase deploy --only firestore:rules,storage,functions
-firebase deploy --only hosting   # after `npm run build` in /web
 ```
+
+Web hosting deployment (Firebase Hosting vs. Vercel vs. another host) will be
+finalized once the web app's admin/teacher/parent modules are further along.

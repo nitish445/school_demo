@@ -35,11 +35,23 @@ export interface Student {
   status: "active" | "archived";
 }
 
+export interface TeacherAssignment {
+  classId: string;
+  subjectId: string;
+}
+
 export interface Teacher {
   id: string; // == uid
   name: string;
   employeeId: string;
-  subjectIds: string[];
+  // Which classes/subjects this teacher teaches as a subject teacher.
+  assignments: TeacherAssignment[];
+  // Denormalized `assignments[].classId`, deduped. Firestore security rules
+  // can't filter a list of maps by one key, so this flat list lets rules
+  // check "does this teacher teach in this class" in a single `in` lookup.
+  // Kept in sync by the setTeacherAssignments Cloud Function.
+  assignedClassIds: string[];
+  // The one class this teacher is the class (home-room) teacher for, if any.
   classTeacherOf: string | null;
 }
 
@@ -65,8 +77,11 @@ export interface Subject {
 export type AttendanceStatus = "present" | "absent" | "late" | "halfDay" | "medicalLeave";
 
 export interface AttendanceRecord {
-  date: string; // ISO date, also the doc id
-  studentStatuses: Record<string, AttendanceStatus>;
+  id: string; // `${studentId}_${date}`
+  studentId: string;
+  classId: string;
+  date: string; // ISO date
+  status: AttendanceStatus;
   markedBy: string;
   markedAt: number;
 }
@@ -82,6 +97,11 @@ export interface Homework {
   attachmentUrls: string[];
   dueDate: string;
   createdBy: string;
+  // Snapshot of the class roster at creation time, kept in sync by the
+  // class-teacher UI when the roster changes. Lets Firestore security rules
+  // grant a parent read access via `studentIds.hasAny(childStudentIds)`
+  // without needing per-student documents.
+  studentIds: string[];
   submissions: Record<string, HomeworkSubmissionStatus>;
 }
 
@@ -134,6 +154,7 @@ export type LeaveStatus = "pending" | "approved" | "rejected";
 export interface Leave {
   id: string;
   studentId: string;
+  classId: string; // denormalized from the student, for security rules + queries
   fromDate: string;
   toDate: string;
   reason: string;

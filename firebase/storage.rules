@@ -1,9 +1,78 @@
 rules_version = '2';
 
-// Placeholder: deny all access until role-based rules are added
-// (see task: "Auth, Firestore security rules, and role-claims Cloud Functions").
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function tokenSchoolId() {
+      return request.auth.token.schoolId;
+    }
+
+    function tokenRole() {
+      return request.auth.token.role;
+    }
+
+    function isAdmin(schoolId) {
+      return signedIn() && tokenSchoolId() == schoolId && tokenRole() == 'admin';
+    }
+
+    function isTeacher(schoolId) {
+      return signedIn() && tokenSchoolId() == schoolId &&
+        (tokenRole() == 'classTeacher' || tokenRole() == 'subjectTeacher');
+    }
+
+    function childStudentIds(schoolId) {
+      return firestore.get(/databases/(default)/documents/schools/$(schoolId)/parents/$(request.auth.uid)).data.childStudentIds;
+    }
+
+    function isParentOf(schoolId, studentId) {
+      return signedIn() && tokenSchoolId() == schoolId && tokenRole() == 'parent' &&
+        studentId in childStudentIds(schoolId);
+    }
+
+    function isParentOfHomeworkClass(schoolId, homeworkId) {
+      return signedIn() && tokenSchoolId() == schoolId && tokenRole() == 'parent' &&
+        firestore.get(/databases/(default)/documents/schools/$(schoolId)/homework/$(homeworkId)).data.studentIds
+          .hasAny(childStudentIds(schoolId));
+    }
+
+    function isParentOfLeave(schoolId, leaveId) {
+      return signedIn() && tokenSchoolId() == schoolId && tokenRole() == 'parent' &&
+        firestore.get(/databases/(default)/documents/schools/$(schoolId)/leaves/$(leaveId)).data.studentId
+          in childStudentIds(schoolId);
+    }
+
+    // Student documents / medical records: /schools/{schoolId}/students/{studentId}/**
+    match /schools/{schoolId}/students/{studentId}/{allPaths=**} {
+      allow read: if isAdmin(schoolId) || isTeacher(schoolId) || isParentOf(schoolId, studentId);
+      allow write: if isAdmin(schoolId);
+    }
+
+    // Homework attachments (uploaded by teachers, downloaded by parents/students):
+    // /schools/{schoolId}/homework/{homeworkId}/**
+    match /schools/{schoolId}/homework/{homeworkId}/{allPaths=**} {
+      allow read: if isAdmin(schoolId) || isTeacher(schoolId) ||
+        isParentOfHomeworkClass(schoolId, homeworkId);
+      allow write: if isAdmin(schoolId) || isTeacher(schoolId);
+    }
+
+    // Leave attachments (medical certificates), uploaded by the parent:
+    // /schools/{schoolId}/leaves/{leaveId}/**
+    match /schools/{schoolId}/leaves/{leaveId}/{allPaths=**} {
+      allow read: if isAdmin(schoolId) || isTeacher(schoolId) ||
+        isParentOfLeave(schoolId, leaveId);
+      allow write: if isAdmin(schoolId) || isParentOfLeave(schoolId, leaveId);
+    }
+
+    // School branding assets (logo, etc.)
+    match /schools/{schoolId}/branding/{allPaths=**} {
+      allow read: if signedIn() && tokenSchoolId() == schoolId;
+      allow write: if isAdmin(schoolId);
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }
