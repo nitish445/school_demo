@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// Placeholder: deny all access until the role-based rules are added
+// (see task: "Auth, Firestore security rules, and role-claims Cloud Functions").
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
