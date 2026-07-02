@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Role } from "@/types/models";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const DASHBOARD_PATH: Record<Role, string> = {
   admin: "/admin",
@@ -13,20 +13,21 @@ const DASHBOARD_PATH: Record<Role, string> = {
 };
 
 export default function Home() {
-  const { user, claims, loading } = useAuth();
+  const { user, claims, profile, loading } = useAuth();
   const router = useRouter();
+  const resolvedRole = (profile?.role ?? claims?.role ?? "admin") as Role;
 
   useEffect(() => {
     if (loading) return;
-    if (user && claims?.role) {
-      router.replace(DASHBOARD_PATH[claims.role]);
+    if (user) {
+      router.replace(DASHBOARD_PATH[resolvedRole]);
     } else {
       router.replace("/login");
     }
-  }, [loading, user, claims, router]);
+  }, [loading, user, resolvedRole, router]);
 
   return (
-    <div className="flex flex-1 items-center justify-center text-sm text-gray-500">
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#eef4ff,_#f8fbff_55%,_#eef2ff)] text-sm font-medium text-slate-600">
       Loading...
     </div>
   );
