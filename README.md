@@ -22,7 +22,8 @@ This is being built incrementally. So far:
       attendance monitor, exams, homework monitor, announcements, fees)
 - [x] Class Teacher / Subject Teacher web module (attendance, homework, marks,
       behaviour notes, daily diary, leave approval, announcements)
-- [ ] Parent web module
+- [x] Parent web module (dashboard, attendance, academics, homework, school
+      diary, announcements, fees, leave with certificate upload, profile)
 - [ ] Flutter mobile app (Teacher + Parent flows)
 
 ## Prerequisites you need to set up
