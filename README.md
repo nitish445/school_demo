@@ -18,7 +18,8 @@ This is being built incrementally. So far:
 
 - [x] Repo scaffolding
 - [x] Auth + Firestore/Storage security rules + role-claims Cloud Functions
-- [ ] Admin web module (students, teachers, parents, classes, attendance, exams, fees, announcements)
+- [x] Admin web module (students, teachers, parents, classes, subjects,
+      attendance monitor, exams, homework monitor, announcements, fees)
 - [ ] Class Teacher / Subject Teacher web module
 - [ ] Parent web module
 - [ ] Flutter mobile app (Teacher + Parent flows)

@@ -53,19 +53,25 @@ export interface Teacher {
   assignedClassIds: string[];
   // The one class this teacher is the class (home-room) teacher for, if any.
   classTeacherOf: string | null;
+  // Denormalized from users/{uid}.status by the setAccountStatus Cloud
+  // Function, since admins can't `list` the top-level users collection.
+  status: "active" | "disabled";
 }
 
 export interface Parent {
   id: string; // == uid
   name: string;
   childStudentIds: string[];
+  status: "active" | "disabled";
 }
 
 export interface SchoolClass {
   id: string;
   grade: string;
   section: string;
-  classTeacherId: string | null;
+  // No classTeacherId here on purpose: `teachers/{uid}.classTeacherOf` is the
+  // single source of truth (security rules depend on it). Look up the class
+  // teacher by finding the teacher whose classTeacherOf equals this class id.
 }
 
 export interface Subject {
