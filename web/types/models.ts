@@ -168,3 +168,28 @@ export interface Leave {
   status: LeaveStatus;
   approvedBy?: string;
 }
+
+export type BehaviourNoteType = "good" | "lateComing" | "misconduct" | "achievement";
+
+export interface BehaviourNote {
+  id: string;
+  studentId: string;
+  classId: string; // denormalized, for security rules + queries
+  type: BehaviourNoteType;
+  note: string;
+  date: string; // ISO date
+  createdBy: string;
+}
+
+export interface DiaryEntry {
+  id: string; // `${classId}_${date}`
+  classId: string;
+  date: string; // ISO date
+  topicsCovered: string;
+  bringTomorrow: string;
+  specialNotes: string;
+  createdBy: string;
+  // Snapshot of the class roster, same rationale as Homework.studentIds:
+  // lets Firestore rules grant parent read access via `hasAny`.
+  studentIds: string[];
+}

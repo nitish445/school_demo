@@ -176,7 +176,12 @@ service cloud.firestore {
           || isMyClass(schoolId, studentClassId(schoolId, resource.data.studentId))
           || teachesInClass(schoolId, studentClassId(schoolId, resource.data.studentId))
           || isMyChild(schoolId, resource.data.studentId);
-        allow write: if isAdmin(schoolId) || isTeacher(schoolId);
+        // Scoped to teachers who actually teach the student's class -- not
+        // just any teacher in the school.
+        allow create, update: if isAdmin(schoolId)
+          || isMyClass(schoolId, studentClassId(schoolId, request.resource.data.studentId))
+          || teachesInClass(schoolId, studentClassId(schoolId, request.resource.data.studentId));
+        allow delete: if isAdmin(schoolId);
       }
 
       // ---- announcements (broadcast content, not sensitive) ----
@@ -209,6 +214,28 @@ service cloud.firestore {
         // Only the class teacher (or admin) can change status/approvedBy.
         allow update: if isAdmin(schoolId) || isMyClass(schoolId, resource.data.classId);
         allow delete: if isAdmin(schoolId);
+      }
+
+      // ---- behaviour notes (written by the class teacher) ----
+
+      match /behaviourNotes/{noteId} {
+        allow read: if isAdmin(schoolId)
+          || isMyClass(schoolId, resource.data.classId)
+          || isMyChild(schoolId, resource.data.studentId);
+        allow create: if isAdmin(schoolId) || isMyClass(schoolId, request.resource.data.classId);
+        allow update, delete: if isAdmin(schoolId)
+          || (isMyClass(schoolId, resource.data.classId) && resource.data.createdBy == request.auth.uid);
+      }
+
+      // ---- daily diary (one entry per class per day) ----
+
+      match /diary/{entryId} {
+        allow read: if isAdmin(schoolId)
+          || isMyClass(schoolId, resource.data.classId)
+          || teachesInClass(schoolId, resource.data.classId)
+          || isMyChildrenClass(schoolId, resource.data.studentIds);
+        allow create, update: if isAdmin(schoolId) || isMyClass(schoolId, request.resource.data.classId);
+        allow delete: if isAdmin(schoolId) || isMyClass(schoolId, resource.data.classId);
       }
     }
   }

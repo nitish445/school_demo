@@ -20,7 +20,8 @@ This is being built incrementally. So far:
 - [x] Auth + Firestore/Storage security rules + role-claims Cloud Functions
 - [x] Admin web module (students, teachers, parents, classes, subjects,
       attendance monitor, exams, homework monitor, announcements, fees)
-- [ ] Class Teacher / Subject Teacher web module
+- [x] Class Teacher / Subject Teacher web module (attendance, homework, marks,
+      behaviour notes, daily diary, leave approval, announcements)
 - [ ] Parent web module
 - [ ] Flutter mobile app (Teacher + Parent flows)
 
