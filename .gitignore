@@ -1,4 +1,8 @@
 firebase-debug.log
 firebase-debug.*.log
+firestore-debug.log
 .firebase/
 ui-debug.log
+.emulator-data/
+*firebase-adminsdk*.json
+serviceAccountKey.json

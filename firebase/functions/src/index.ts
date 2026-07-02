@@ -2,7 +2,7 @@ import { initializeApp } from "firebase-admin/app";
 
 initializeApp();
 
-export { createStaffOrParentAccount, setAccountStatus } from "./accounts";
+export { createStaffOrParentAccount, setAccountStatus, bulkCreateAccounts } from "./accounts";
 export { setTeacherAssignments } from "./teacherAssignments";
 export { onStudentWrite } from "./studentSync";
 

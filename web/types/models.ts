@@ -43,24 +43,32 @@ export interface TeacherAssignment {
 export interface Teacher {
   id: string; // == uid
   name: string;
+  // Denormalized from users/{uid}.email at account-creation time, since
+  // admins can't `list` the top-level users collection to look it up.
+  email?: string;
   employeeId: string;
   // Which classes/subjects this teacher teaches as a subject teacher.
   assignments: TeacherAssignment[];
   // Denormalized `assignments[].classId`, deduped. Firestore security rules
   // can't filter a list of maps by one key, so this flat list lets rules
   // check "does this teacher teach in this class" in a single `in` lookup.
-  // Kept in sync by the setTeacherAssignments Cloud Function.
+  // Kept in sync client-side whenever the admin edits assignments.
   assignedClassIds: string[];
   // The one class this teacher is the class (home-room) teacher for, if any.
   classTeacherOf: string | null;
-  // Denormalized from users/{uid}.status by the setAccountStatus Cloud
-  // Function, since admins can't `list` the top-level users collection.
+  // Denormalized from users/{uid}.status at account-creation time; the admin
+  // updates both copies together when toggling enable/disable.
   status: "active" | "disabled";
 }
 
 export interface Parent {
   id: string; // == uid
   name: string;
+  // Denormalized from users/{uid}.email at account-creation time, since
+  // admins can't `list` the top-level users collection to look it up. Lets
+  // the Students CSV import match a row's parentEmail against an existing
+  // parent purely from client-side reads.
+  email?: string;
   childStudentIds: string[];
   status: "active" | "disabled";
 }

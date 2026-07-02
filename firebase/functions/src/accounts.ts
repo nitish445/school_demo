@@ -25,10 +25,90 @@ function assertCallerIsAdminOf(request: { auth?: { token: Record<string, unknown
 }
 
 /**
- * Creates a Teacher or Parent account: a Firebase Auth user, a `users/{uid}`
- * pointer doc, a role profile doc (`teachers/{uid}` or `parents/{uid}`), and
- * custom claims. Only callable by an existing admin of the same school --
- * there is no public self-signup in this app.
+ * Creates a Firebase Auth user, `users/{uid}` pointer doc, role profile doc
+ * (`teachers/{uid}` or `parents/{uid}`), and custom claims for one account.
+ *
+ * If the email already belongs to an existing Auth user who is already a
+ * `kind` account in this school, that account is reused instead of erroring
+ * -- lets bulk CSV imports be re-run safely without creating duplicates.
+ * Any other email collision (different school, different role, or an
+ * unrelated account) is a hard error.
+ */
+async function createOrReuseAccount(
+  schoolId: string,
+  input: { email: string; password: string; displayName: string; phone?: string; kind: AccountKind; employeeId?: string }
+): Promise<{ uid: string; reused: boolean }> {
+  const { email, password, displayName, phone, kind, employeeId } = input;
+
+  if (!["teacher", "parent"].includes(kind)) {
+    throw new Error("kind must be teacher or parent.");
+  }
+  if (!email || !password || !displayName) {
+    throw new Error("email, password, and displayName are required.");
+  }
+
+  const auth = getAuth();
+  const db = getFirestore();
+  const role = kind === "parent" ? "parent" : "subjectTeacher";
+
+  let uid: string;
+  let reused = false;
+  try {
+    const userRecord = await auth.createUser({ email, password, displayName });
+    uid = userRecord.uid;
+  } catch (err) {
+    if ((err as { code?: string }).code !== "auth/email-already-exists") {
+      throw err;
+    }
+    const existing = await auth.getUserByEmail(email);
+    const existingDoc = await db.doc(`users/${existing.uid}`).get();
+    const existingData = existingDoc.data();
+    if (!existingDoc.exists || existingData?.schoolId !== schoolId || existingData?.role !== role) {
+      throw new Error(`${email} is already in use by a different account.`);
+    }
+    uid = existing.uid;
+    reused = true;
+  }
+
+  if (!reused) {
+    await auth.setCustomUserClaims(uid, { schoolId, role });
+
+    const batch = db.batch();
+    batch.set(db.doc(`users/${uid}`), {
+      schoolId,
+      role,
+      displayName,
+      email,
+      phone: phone ?? null,
+      status: "active",
+    });
+
+    if (kind === "parent") {
+      batch.set(db.doc(`schools/${schoolId}/parents/${uid}`), {
+        name: displayName,
+        childStudentIds: [],
+        status: "active",
+      });
+    } else {
+      batch.set(db.doc(`schools/${schoolId}/teachers/${uid}`), {
+        name: displayName,
+        employeeId: employeeId ?? "",
+        assignments: [],
+        assignedClassIds: [],
+        classTeacherOf: null,
+        status: "active",
+      });
+    }
+
+    await batch.commit();
+  }
+
+  return { uid, reused };
+}
+
+/**
+ * Creates a Teacher or Parent account. Only callable by an existing admin of
+ * the same school -- there is no public self-signup in this app.
  *
  * New teachers start with the `subjectTeacher` role and no assignments; use
  * `setTeacherAssignments` afterwards to assign classes/subjects or promote
@@ -38,49 +118,70 @@ export const createStaffOrParentAccount = onCall<CreateAccountInput>(async (requ
   const { schoolId, email, password, displayName, phone, kind, employeeId } = request.data;
   assertCallerIsAdminOf(request, schoolId);
 
-  if (!["teacher", "parent"].includes(kind)) {
-    throw new HttpsError("invalid-argument", "kind must be teacher or parent.");
+  try {
+    const { uid } = await createOrReuseAccount(schoolId, { email, password, displayName, phone, kind, employeeId });
+    return { uid };
+  } catch (err) {
+    throw new HttpsError("invalid-argument", err instanceof Error ? err.message : "Could not create account.");
   }
-  if (!email || !password || !displayName) {
-    throw new HttpsError("invalid-argument", "email, password, and displayName are required.");
+});
+
+interface BulkAccountInput {
+  email: string;
+  password: string;
+  displayName: string;
+  phone?: string;
+  kind: AccountKind;
+  employeeId?: string;
+}
+
+interface BulkCreateAccountsInput {
+  schoolId: string;
+  accounts: BulkAccountInput[];
+}
+
+interface BulkAccountResult {
+  index: number;
+  email: string;
+  ok: boolean;
+  uid?: string;
+  reused?: boolean;
+  error?: string;
+}
+
+/**
+ * CSV-import entry point: creates/reuses up to 500 Teacher or Parent
+ * accounts in one call. Each row is independent -- a failure on one row
+ * doesn't abort the rest -- so the caller can show a per-row result table.
+ */
+export const bulkCreateAccounts = onCall<BulkCreateAccountsInput>(async (request) => {
+  const { schoolId, accounts } = request.data;
+  assertCallerIsAdminOf(request, schoolId);
+
+  if (!Array.isArray(accounts) || accounts.length === 0) {
+    throw new HttpsError("invalid-argument", "accounts must be a non-empty array.");
+  }
+  if (accounts.length > 500) {
+    throw new HttpsError("invalid-argument", "Import at most 500 accounts at a time.");
   }
 
-  const auth = getAuth();
-  const db = getFirestore();
-  const role = kind === "parent" ? "parent" : "subjectTeacher";
-
-  const userRecord = await auth.createUser({ email, password, displayName });
-  await auth.setCustomUserClaims(userRecord.uid, { schoolId, role });
-
-  const batch = db.batch();
-  batch.set(db.doc(`users/${userRecord.uid}`), {
-    schoolId,
-    role,
-    displayName,
-    email,
-    phone: phone ?? null,
-    status: "active",
-  });
-
-  if (kind === "parent") {
-    batch.set(db.doc(`schools/${schoolId}/parents/${userRecord.uid}`), {
-      name: displayName,
-      childStudentIds: [],
-      status: "active",
-    });
-  } else {
-    batch.set(db.doc(`schools/${schoolId}/teachers/${userRecord.uid}`), {
-      name: displayName,
-      employeeId: employeeId ?? "",
-      assignments: [],
-      assignedClassIds: [],
-      classTeacherOf: null,
-      status: "active",
-    });
+  const results: BulkAccountResult[] = [];
+  for (let index = 0; index < accounts.length; index++) {
+    const account = accounts[index];
+    try {
+      const { uid, reused } = await createOrReuseAccount(schoolId, account);
+      results.push({ index, email: account.email, ok: true, uid, reused });
+    } catch (err) {
+      results.push({
+        index,
+        email: account.email,
+        ok: false,
+        error: err instanceof Error ? err.message : "Unknown error.",
+      });
+    }
   }
 
-  await batch.commit();
-  return { uid: userRecord.uid };
+  return { results };
 });
 
 interface SetAccountStatusInput {

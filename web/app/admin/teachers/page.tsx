@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { doc, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useSchoolId } from "@/hooks/useSchoolId";
 import { useCollection } from "@/hooks/useCollection";
 import type { Teacher, SchoolClass, Subject, TeacherAssignment } from "@/types/models";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
-import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui/formStyles";
-import { createStaffOrParentAccount, setAccountStatus, setTeacherAssignments } from "@/lib/functions";
+import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass, cardClass } from "@/components/ui/formStyles";
 
 export default function TeachersPage() {
   const schoolId = useSchoolId();
@@ -17,48 +18,12 @@ export default function TeachersPage() {
   const { data: classes } = useCollection<SchoolClass>(schoolId ? `schools/${schoolId}/classes` : null);
   const { data: subjects } = useCollection<Subject>(schoolId ? `schools/${schoolId}/subjects` : null);
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignTeacher, setAssignTeacher] = useState<Teacher | null>(null);
   const [classTeacherOf, setClassTeacherOf] = useState("");
   const [assignments, setAssignments] = useState<TeacherAssignment[]>([]);
-
-  function openAdd() {
-    setName("");
-    setEmail("");
-    setPassword("");
-    setEmployeeId("");
-    setError(null);
-    setAddOpen(true);
-  }
-
-  async function handleAdd() {
-    if (!schoolId || !name || !email || !password) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await createStaffOrParentAccount({
-        schoolId,
-        email,
-        password,
-        displayName: name,
-        employeeId,
-        kind: "teacher",
-      });
-      setAddOpen(false);
-    } catch {
-      setError("Could not create the account. Check the email isn't already in use.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   function openAssign(t: Teacher) {
     setAssignTeacher(t);
@@ -83,12 +48,19 @@ export default function TeachersPage() {
     if (!schoolId || !assignTeacher) return;
     setSubmitting(true);
     try {
-      await setTeacherAssignments({
-        schoolId,
-        teacherId: assignTeacher.id,
-        assignments: assignments.filter((a) => a.classId && a.subjectId),
-        classTeacherOf: classTeacherOf || null,
-      });
+      const cleanAssignments = assignments.filter((a) => a.classId && a.subjectId);
+      const assignedClassIds = Array.from(new Set(cleanAssignments.map((a) => a.classId)));
+      await writeBatch(db)
+        .set(
+          doc(db, `schools/${schoolId}/teachers/${assignTeacher.id}`),
+          {
+            assignments: cleanAssignments,
+            assignedClassIds,
+            classTeacherOf: classTeacherOf || null,
+          },
+          { merge: true }
+        )
+        .commit();
       setAssignOpen(false);
     } finally {
       setSubmitting(false);
@@ -97,24 +69,31 @@ export default function TeachersPage() {
 
   async function toggleStatus(t: Teacher) {
     if (!schoolId) return;
-    await setAccountStatus({
-      schoolId,
-      uid: t.id,
-      status: t.status === "disabled" ? "active" : "disabled",
-    });
+    const status = t.status === "disabled" ? "active" : "disabled";
+    await writeBatch(db)
+      .set(doc(db, `users/${t.id}`), { status }, { merge: true })
+      .set(doc(db, `schools/${schoolId}/teachers/${t.id}`), { status }, { merge: true })
+      .commit();
   }
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Teachers</h1>
-        <button onClick={openAdd} className={primaryButtonClass}>
-          Add Teacher
-        </button>
+        <h1 className="text-2xl font-semibold text-slate-900">Teachers</h1>
+      </div>
+
+      <div className={`${cardClass} mb-6 text-sm text-slate-600`}>
+        Adding a teacher creates a login, which needs to run with admin (Admin SDK) privileges — there&apos;s no
+        in-browser button for that on the free plan. From <code className="rounded bg-slate-100 px-1">firebase/functions</code>,
+        run:
+        <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-100">
+          {`npm run create-account -- --schoolId ${schoolId || "<schoolId>"} --kind teacher \\\n  --email jane@example.com --password TempPass123 --name "Jane Doe" --employeeId EMP-1`}
+        </pre>
+        They&apos;ll show up here once created.
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-slate-500">Loading...</p>
       ) : (
         <DataTable
           rows={teachers}
@@ -126,7 +105,7 @@ export default function TeachersPage() {
               header: "Class Teacher Of",
               render: (t) => {
                 const c = classes.find((c) => c.id === t.classTeacherOf);
-                return c ? `${c.grade}-${c.section}` : <span className="text-gray-400">—</span>;
+                return c ? `${c.grade}-${c.section}` : <span className="text-slate-400">—</span>;
               },
             },
             {
@@ -139,7 +118,7 @@ export default function TeachersPage() {
                     return c && s ? `${s.name} (${c.grade}-${c.section})` : null;
                   })
                   .filter(Boolean)
-                  .join(", ") || <span className="text-gray-400">None</span>,
+                  .join(", ") || <span className="text-slate-400">None</span>,
             },
             {
               header: "Status",
@@ -154,7 +133,7 @@ export default function TeachersPage() {
               header: "",
               render: (t) => (
                 <div className="flex gap-3">
-                  <button onClick={() => openAssign(t)} className="text-sm text-gray-700 hover:underline">
+                  <button onClick={() => openAssign(t)} className="text-sm text-slate-700 hover:underline">
                     Assign
                   </button>
                   <button
@@ -169,42 +148,6 @@ export default function TeachersPage() {
           ]}
         />
       )}
-
-      <Modal open={addOpen} title="Add Teacher" onClose={() => setAddOpen(false)}>
-        <div className="space-y-4">
-          <div>
-            <label className={labelClass}>Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Employee ID</label>
-            <input value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Temporary Password</label>
-            <input
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClass}
-              placeholder="Share this with the teacher directly"
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setAddOpen(false)} className={secondaryButtonClass}>
-              Cancel
-            </button>
-            <button onClick={handleAdd} disabled={submitting} className={primaryButtonClass}>
-              {submitting ? "Creating..." : "Create Account"}
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       <Modal
         open={assignOpen}
@@ -227,7 +170,7 @@ export default function TeachersPage() {
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className={labelClass}>Subjects Taught (class + subject)</label>
-              <button onClick={addAssignmentRow} className="text-sm text-gray-700 hover:underline">
+              <button onClick={addAssignmentRow} className="text-sm text-slate-700 hover:underline">
                 + Add row
               </button>
             </div>

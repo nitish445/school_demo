@@ -13,7 +13,10 @@
     "shell": "npm run build && firebase functions:shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "bootstrap:admin": "ts-node --transpile-only scripts/createFirstAdmin.ts"
+    "bootstrap:admin": "ts-node --transpile-only scripts/createFirstAdmin.ts",
+    "create-account": "ts-node --transpile-only scripts/createAccount.ts",
+    "import-parents": "ts-node --transpile-only scripts/importParentsCsv.ts",
+    "import-students": "ts-node --transpile-only scripts/importStudentsCsv.ts"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0",

@@ -17,8 +17,16 @@ service cloud.firestore {
       return request.auth.token.role;
     }
 
+    // There's no backend left to revoke a disabled user's custom claims (no
+    // Cloud Functions on the free Spark plan), so `status` on their own
+    // `users/{uid}` doc is the real on/off switch: a disabled account keeps
+    // a working Firebase Auth login but loses all school-scoped access here.
+    function myStatus() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status;
+    }
+
     function inSchool(schoolId) {
-      return signedIn() && tokenSchoolId() == schoolId;
+      return signedIn() && tokenSchoolId() == schoolId && myStatus() == 'active';
     }
 
     function isAdmin(schoolId) {
@@ -49,23 +57,30 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/schools/$(schoolId)/parents/$(request.auth.uid)).data;
     }
 
+    // These three all key off `isTeacher()` (either claim sub-type) plus the
+    // Firestore-writable fields on the teacher's own doc, not off which of
+    // `classTeacher`/`subjectTeacher` their claim happens to say -- the admin
+    // updates `classTeacherOf`/`assignments`/`assignedClassIds` directly from
+    // the browser (no Cloud Function to also flip the claim on every edit),
+    // so the claim sub-type can go stale without breaking access here.
+
     // Class teacher's own home-room class.
     function isMyClass(schoolId, classId) {
-      return isClassTeacher(schoolId) && teacherDoc(schoolId).classTeacherOf == classId;
+      return isTeacher(schoolId) && teacherDoc(schoolId).classTeacherOf == classId;
     }
 
-    // Subject teacher teaches `subjectId` in `classId`.
+    // Teaches `subjectId` in `classId`.
     function teachesClassSubject(schoolId, classId, subjectId) {
-      return isSubjectTeacher(schoolId) &&
+      return isTeacher(schoolId) &&
         teacherDoc(schoolId).assignments.hasAny([{'classId': classId, 'subjectId': subjectId}]);
     }
 
-    // Subject teacher teaches somewhere in `classId` (any subject). Reads the
-    // denormalized `assignedClassIds` list (kept in sync with `assignments`
-    // by the setTeacherAssignments Cloud Function) since the rules language
-    // has no way to filter a list of maps by a single key.
+    // Teaches somewhere in `classId` (any subject). Reads the denormalized
+    // `assignedClassIds` list (kept in sync with `assignments` client-side
+    // whenever the admin edits a teacher's assignments) since the rules
+    // language has no way to filter a list of maps by a single key.
     function teachesInClass(schoolId, classId) {
-      return isSubjectTeacher(schoolId) && classId in teacherDoc(schoolId).assignedClassIds;
+      return isTeacher(schoolId) && classId in teacherDoc(schoolId).assignedClassIds;
     }
 
     function isMyChild(schoolId, studentId) {
@@ -80,30 +95,44 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/schools/$(schoolId)/students/$(studentId)).data.classId;
     }
 
-    // ---- top-level users (auth/profile pointer, managed by Cloud Functions) ----
+    // ---- top-level users (auth/profile pointer) ----
+    // Created by the admin-run Admin SDK scripts in firebase/functions/scripts
+    // (no Cloud Functions on the free plan to do it from the browser). Once
+    // created, an admin can flip `status` directly from the client -- and
+    // only `status`, so this can't be used to self-promote a role.
 
     match /users/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin(resource.data.schoolId));
       allow list: if false;
-      allow write: if false; // only Cloud Functions (Admin SDK) write these
+      allow create: if false; // Admin SDK script only
+      allow update: if isAdmin(resource.data.schoolId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if false;
     }
 
     match /schools/{schoolId} {
       allow read: if inSchool(schoolId);
       allow write: if isAdmin(schoolId);
 
-      // ---- staff / parent profiles (managed by Cloud Functions) ----
+      // ---- staff / parent profiles ----
+      // The account itself (Firebase Auth user + this doc) is created by an
+      // admin-run script. Field updates (status, assignments, roster links)
+      // happen directly from the admin's browser.
 
       match /teachers/{teacherId} {
         allow get: if isAdmin(schoolId) || request.auth.uid == teacherId;
         allow list: if isAdmin(schoolId);
-        allow write: if false;
+        allow create: if false; // Admin SDK script only
+        allow update: if isAdmin(schoolId);
+        allow delete: if false;
       }
 
       match /parents/{parentId} {
         allow get: if isAdmin(schoolId) || request.auth.uid == parentId;
         allow list: if isAdmin(schoolId);
-        allow write: if false;
+        allow create: if false; // Admin SDK script only
+        allow update: if isAdmin(schoolId);
+        allow delete: if false;
       }
 
       // ---- academic structure ----
