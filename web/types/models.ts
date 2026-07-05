@@ -1,5 +1,11 @@
 export type Role = "admin" | "classTeacher" | "subjectTeacher" | "parent";
 
+// A title for admin-role staff -- distinct from `Role`, which stays "admin"
+// for all of these so the existing isAdmin() rules/permissions don't need to
+// change. "principal" is the one designation with extra powers (see
+// isPrincipal() in firestore.rules); the rest are purely descriptive.
+export type AdminDesignation = "principal" | "incharge" | "labAssistant" | "teacher";
+
 export interface AppUser {
   uid: string;
   schoolId: string;
@@ -8,6 +14,8 @@ export interface AppUser {
   email: string;
   phone?: string;
   status: "active" | "disabled";
+  designation?: AdminDesignation; // only set when role === "admin"
+  photoUrl?: string;
 }
 
 export interface School {
@@ -30,6 +38,7 @@ export interface Student {
   dob?: string;
   gender?: "male" | "female" | "other";
   parentIds: string[];
+  address?: string;
   emergencyContact?: string;
   medicalNotes?: string;
   status: "active" | "archived";
@@ -59,6 +68,7 @@ export interface Teacher {
   // Denormalized from users/{uid}.status at account-creation time; the admin
   // updates both copies together when toggling enable/disable.
   status: "active" | "disabled";
+  photoUrl?: string;
 }
 
 export interface Parent {
@@ -69,23 +79,31 @@ export interface Parent {
   // the Students CSV import match a row's parentEmail against an existing
   // parent purely from client-side reads.
   email?: string;
+  // Denormalized from users/{uid}.phone the same way, so the Students page
+  // can show a linked parent's contact details without a separate lookup.
+  phone?: string;
   childStudentIds: string[];
   status: "active" | "disabled";
+  photoUrl?: string;
 }
 
 export interface SchoolClass {
   id: string;
   grade: string;
   section: string;
+  year: string; // academic year, e.g. "2026-2027"
   // No classTeacherId here on purpose: `teachers/{uid}.classTeacherOf` is the
   // single source of truth (security rules depend on it). Look up the class
   // teacher by finding the teacher whose classTeacherOf equals this class id.
+  status: "active" | "disabled";
 }
 
 export interface Subject {
   id: string;
   name: string;
   code: string;
+  year: string; // academic year, e.g. "2026-2027"
+  status: "active" | "disabled";
 }
 
 export type AttendanceStatus = "present" | "absent" | "late" | "halfDay" | "medicalLeave";
@@ -119,20 +137,62 @@ export interface Homework {
   submissions: Record<string, HomeworkSubmissionStatus>;
 }
 
+export interface ExamComponent {
+  id: string; // client-generated (crypto.randomUUID()), stable across edits
+  title: string; // e.g. "Continuous Assessment Test - I"
+  maxMark: number;
+  weightage: number; // percentage points this component contributes toward the subject total
+}
+
+export interface ExamScheduleEntry {
+  // Scheduled by grade (e.g. "5"), not a specific section -- applies to
+  // every class (5-A, 5-B, ...) in that grade, so admin doesn't have to add
+  // one row per section.
+  grade: string;
+  subjectId: string;
+  date: string;
+}
+
+// Admin-owned: name, term, and which class+subject sits which exam on which
+// date. Deliberately has no marks-weighting info -- that's the subject
+// teacher's call (see ExamComponentSet).
 export interface Exam {
   id: string;
   name: string;
   term: string;
-  subjects: { subjectId: string; date: string; maxMarks: number }[];
+  schedule: ExamScheduleEntry[];
   published: boolean;
+}
+
+// Subject-teacher-owned: the weighted assessment breakdown (CAT-I, Quiz-I,
+// FAT, ...) for one class+subject within one exam. Kept separate from Exam
+// so Firestore rules can grant write access per class+subject
+// (teachesClassSubject) without also granting it over the admin-owned
+// schedule -- a single teacher-writable array field on Exam couldn't be
+// scoped that precisely.
+export interface ExamComponentSet {
+  id: string; // `${examId}_${classId}_${subjectId}`
+  examId: string;
+  classId: string;
+  subjectId: string;
+  components: ExamComponent[];
+  // Gate before a parent can see these marks -- only an admin or the
+  // class's own class teacher can set this true; the subject teacher who
+  // entered the marks cannot self-approve. Any further edit by the subject
+  // teacher resets this to false, forcing re-review.
+  approved?: boolean;
+  approvedBy?: string;
+  approvedAt?: number;
 }
 
 export interface Marks {
   id: string; // `${examId}_${studentId}`
   studentId: string;
   examId: string;
-  subjectMarks: Record<string, number>;
-  remarks?: string;
+  // subjectId -> componentId -> scored mark
+  componentMarks: Record<string, Record<string, number>>;
+  // subjectId -> the subject teacher's remark for this exam
+  remarks?: Record<string, string>;
 }
 
 export type AnnouncementAudience = "all" | "class" | "role";
@@ -200,4 +260,50 @@ export interface DiaryEntry {
   // Snapshot of the class roster, same rationale as Homework.studentIds:
   // lets Firestore rules grant parent read access via `hasAny`.
   studentIds: string[];
+}
+
+export interface Admin {
+  id: string; // == uid
+  name: string;
+  email?: string;
+  status: "active" | "disabled";
+  designation?: AdminDesignation;
+  photoUrl?: string;
+}
+
+export interface TimetablePeriod {
+  day: number; // 0 (Sun) - 6 (Sat), matches School.workingDays numbering
+  period: number; // 1-based slot index
+  subjectId?: string; // omitted for non-teaching slots (assembly, lunch, etc.)
+  label?: string; // free text, only used when there's no subjectId
+  startTime?: string; // "HH:mm"
+  endTime?: string; // "HH:mm"
+}
+
+export interface Timetable {
+  id: string; // == classId
+  classId: string;
+  periods: TimetablePeriod[];
+}
+
+export type CalendarEventType = "holiday" | "exam" | "ptm" | "event" | "other";
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  date: string; // ISO date, start date
+  endDate?: string; // ISO date, only set for multi-day events (inclusive span)
+  type: CalendarEventType;
+  createdBy: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  action: "create" | "update" | "delete";
+  entity: string;
+  entityLabel: string;
+  actorUid: string;
+  actorEmail: string;
+  createdAt: { toDate: () => Date } | null; // Firestore Timestamp (null briefly, before the server resolves it)
 }

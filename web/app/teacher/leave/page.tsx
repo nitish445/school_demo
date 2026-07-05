@@ -1,13 +1,16 @@
 "use client";
 
-import { doc, updateDoc, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { where } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolId } from "@/hooks/useSchoolId";
 import { useMyClassIds } from "@/hooks/useMyClassIds";
 import { useCollection } from "@/hooks/useCollection";
 import type { Leave, Student } from "@/types/models";
 import { DataTable } from "@/components/ui/DataTable";
+import { Badge } from "@/components/ui/Badge";
+import { Spinner } from "@/components/ui/Spinner";
+import { pageHeadingClass } from "@/components/ui/formStyles";
+import { approveLeave, rejectLeave } from "@/lib/leave";
 
 export default function TeacherLeaveApprovalPage() {
   const schoolId = useSchoolId();
@@ -27,22 +30,24 @@ export default function TeacherLeaveApprovalPage() {
     [classId]
   );
 
-  async function setStatus(l: Leave, status: "approved" | "rejected") {
+  async function handleApprove(l: Leave) {
     if (!schoolId || !user) return;
-    await updateDoc(doc(db, `schools/${schoolId}/leaves/${l.id}`), {
-      status,
-      approvedBy: user.uid,
-    });
+    await approveLeave(schoolId, l, user.uid);
+  }
+
+  async function handleReject(l: Leave) {
+    if (!schoolId || !user) return;
+    await rejectLeave(schoolId, l.id, user.uid);
   }
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Leave Approval</h1>
+      <h1 className={`mb-6 ${pageHeadingClass}`}>Leave Approval</h1>
 
       {!classId ? (
-        <p className="text-sm text-gray-500">You are not a class teacher of any class yet.</p>
+        <p className="text-sm text-stone-500">You are not a class teacher of any class yet.</p>
       ) : loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <Spinner />
       ) : (
         <DataTable
           rows={leaves}
@@ -57,31 +62,21 @@ export default function TeacherLeaveApprovalPage() {
             { header: "Reason", render: (l) => l.reason },
             {
               header: "Status",
-              render: (l) => {
-                const color =
-                  l.status === "approved"
-                    ? "text-green-700"
-                    : l.status === "rejected"
-                      ? "text-red-700"
-                      : "text-amber-700";
-                return <span className={color}>{l.status}</span>;
-              },
+              render: (l) => (
+                <Badge variant={l.status === "approved" ? "success" : l.status === "rejected" ? "danger" : "warning"}>
+                  {l.status}
+                </Badge>
+              ),
             },
             {
               header: "",
               render: (l) =>
                 l.status === "pending" && (
                   <div className="flex gap-3">
-                    <button
-                      onClick={() => setStatus(l, "approved")}
-                      className="text-sm text-green-700 hover:underline"
-                    >
+                    <button onClick={() => handleApprove(l)} className="text-sm text-emerald-700 hover:underline">
                       Approve
                     </button>
-                    <button
-                      onClick={() => setStatus(l, "rejected")}
-                      className="text-sm text-red-600 hover:underline"
-                    >
+                    <button onClick={() => handleReject(l)} className="text-sm text-rose-600 hover:underline">
                       Reject
                     </button>
                   </div>

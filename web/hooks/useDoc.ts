@@ -8,6 +8,7 @@ import { db } from "@/lib/firebase";
 export function useDoc<T extends DocumentData>(path: string | null) {
   const [data, setData] = useState<(T & { id: string }) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!path) {
@@ -19,12 +20,19 @@ export function useDoc<T extends DocumentData>(path: string | null) {
       return;
     }
     setLoading(true);
-    const unsubscribe = onSnapshot(doc(db, path), (snap) => {
-      setData(snap.exists() ? ({ id: snap.id, ...(snap.data() as T) }) : null);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      doc(db, path),
+      (snap) => {
+        setData(snap.exists() ? ({ id: snap.id, ...(snap.data() as T) }) : null);
+        setLoading(false);
+      },
+      (err) => {
+        setError(err);
+        setLoading(false);
+      }
+    );
     return unsubscribe;
   }, [path]);
 
-  return { data, loading };
+  return { data, loading, error };
 }

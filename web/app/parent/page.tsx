@@ -6,10 +6,23 @@ import { useEffectiveChildId } from "@/hooks/useEffectiveChildId";
 import { useCollection } from "@/hooks/useCollection";
 import { useDoc } from "@/hooks/useDoc";
 import type { Student, Homework, Announcement, FeeRecord, AttendanceRecord, Exam } from "@/types/models";
+import { CalendarCheck, NotebookPen, ClipboardList, Wallet, Megaphone, Users } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
+
+const ATTENDANCE_LABEL: Record<string, string> = {
+  present: "Present",
+  absent: "Absent",
+  late: "Late",
+  halfDay: "Half Day",
+  medicalLeave: "Medical Leave",
+};
 
 export default function ParentDashboardPage() {
   const schoolId = useSchoolId();
@@ -50,9 +63,11 @@ export default function ParentDashboardPage() {
 
   if (childStudentIds.length === 0) {
     return (
-      <p className="text-sm text-gray-500">
-        No children are linked to your account yet. Contact the school admin.
-      </p>
+      <EmptyState
+        icon={Users}
+        title="No children are linked to your account yet"
+        description="Contact the school admin to get your child linked."
+      />
     );
   }
 
@@ -61,44 +76,38 @@ export default function ParentDashboardPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">{student?.name ?? "Dashboard"}</h1>
+      <PageHeader title={student?.name ?? "Dashboard"} />
 
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs font-medium text-gray-500">Present Today</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">
-            {todayStatus ? todayStatus : "Not marked yet"}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs font-medium text-gray-500">Pending Homework</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">{pendingHomework.length}</p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs font-medium text-gray-500">Upcoming Exams</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">{exams.length}</p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs font-medium text-gray-500">Fees Due</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">₹{pendingFees.toLocaleString()}</p>
-        </div>
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard
+          label="Present Today"
+          value={todayStatus ? ATTENDANCE_LABEL[todayStatus] ?? todayStatus : "Unmarked"}
+          icon={CalendarCheck}
+          tint="emerald"
+        />
+        <StatCard label="Pending Homework" value={pendingHomework.length} icon={NotebookPen} tint="gold" />
+        <StatCard label="Upcoming Exams" value={exams.length} icon={ClipboardList} tint="sky" />
+        <StatCard label="Fees Due" value={`₹${pendingFees.toLocaleString()}`} icon={Wallet} tint="amber" />
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Latest Notices</h2>
+      <Card>
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-stone-900">
+          <Megaphone className="h-4 w-4 text-stone-400" strokeWidth={2} />
+          Latest Notices
+        </h2>
         {announcements.length === 0 ? (
-          <p className="text-sm text-gray-500">No announcements yet.</p>
+          <EmptyState icon={Megaphone} title="No announcements yet" />
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {announcements.map((a) => (
-              <li key={a.id} className="border-b border-gray-100 pb-2 last:border-0">
-                <p className="text-sm font-medium text-gray-900">{a.title}</p>
-                <p className="text-sm text-gray-500">{a.body}</p>
+              <li key={a.id} className="border-b border-stone-100 pb-3 last:border-0 last:pb-0">
+                <p className="text-sm font-medium text-stone-900">{a.title}</p>
+                <p className="mt-0.5 text-sm text-stone-500">{a.body}</p>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

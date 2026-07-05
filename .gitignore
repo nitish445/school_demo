@@ -6,3 +6,5 @@ ui-debug.log
 .emulator-data/
 *firebase-adminsdk*.json
 serviceAccountKey.json
+.claude/
+.DS_Store

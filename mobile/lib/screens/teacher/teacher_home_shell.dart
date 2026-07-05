@@ -5,9 +5,12 @@ import '../../models/models.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import 'teacher_attendance_screen.dart';
+import 'teacher_calendar_screen.dart';
 import 'teacher_dashboard_screen.dart';
 import 'teacher_homework_screen.dart';
 import 'teacher_marks_screen.dart';
+import 'teacher_profile_screen.dart';
+import 'teacher_timetable_screen.dart';
 
 /// Fetches the signed-in teacher's own profile once and hosts the bottom-tab
 /// navigation, passing the profile down so each tab doesn't re-fetch it.
@@ -56,6 +59,9 @@ class _TeacherHomeShellState extends State<TeacherHomeShell> {
           TeacherAttendanceScreen(schoolId: schoolId, classIds: classIds),
           TeacherHomeworkScreen(schoolId: schoolId, teacher: teacher, classIds: classIds),
           TeacherMarksScreen(schoolId: schoolId, teacher: teacher, classIds: classIds),
+          TeacherTimetableScreen(schoolId: schoolId, teacher: teacher, classIds: classIds),
+          TeacherCalendarScreen(schoolId: schoolId),
+          TeacherProfileScreen(schoolId: schoolId, teacher: teacher),
         ];
 
         return Scaffold(
@@ -68,6 +74,9 @@ class _TeacherHomeShellState extends State<TeacherHomeShell> {
               NavigationDestination(icon: Icon(Icons.checklist_outlined), label: 'Attendance'),
               NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Homework'),
               NavigationDestination(icon: Icon(Icons.grade_outlined), label: 'Marks'),
+              NavigationDestination(icon: Icon(Icons.schedule_outlined), label: 'Timetable'),
+              NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
+              NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
             ],
           ),
         );

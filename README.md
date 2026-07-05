@@ -117,6 +117,16 @@ flutter pub get
 flutter run
 ```
 
+Profile picture upload (Teacher/Parent) uses `image_picker`, which needs
+usage-description/permission entries in the platform folders `flutter create .`
+generates -- add these once, after that command:
+
+- **Android** (`android/app/src/main/AndroidManifest.xml`): add
+  `<uses-permission android:name="android.permission.CAMERA" />` (gallery
+  picking needs no extra permission on modern Android via the photo picker).
+- **iOS** (`ios/Runner/Info.plist`): add `NSCameraUsageDescription` and
+  `NSPhotoLibraryUsageDescription` keys with a short explanation string.
+
 ## Deploying
 
 ```bash

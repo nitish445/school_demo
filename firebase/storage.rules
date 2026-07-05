@@ -73,6 +73,18 @@ service firebase.storage {
       allow write: if isAdmin(schoolId);
     }
 
+    // Profile pictures: /profile-pictures/{uid}/{fileName}. Deliberately not
+    // gated by role/schoolId custom claims (unlike the blocks above) -- this
+    // app doesn't set those from the browser, so anyone uploading their own
+    // picture only needs to prove they own that uid.
+    match /profile-pictures/{uid}/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid &&
+        request.resource.size < 3 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -73,16 +73,16 @@ export default function TeacherDiaryPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Daily Diary</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-stone-900">Daily Diary</h1>
 
       {!classId ? (
-        <p className="text-sm text-gray-500">You are not a class teacher of any class yet.</p>
+        <p className="text-sm text-stone-500">You are not a class teacher of any class yet.</p>
       ) : (
         <>
           <div className="mb-6 flex items-end gap-4">
             <div>
               <label className={labelClass}>Class</label>
-              <p className="text-sm text-gray-700">{myClass ? `${myClass.grade}-${myClass.section}` : "—"}</p>
+              <p className="text-sm text-stone-700">{myClass ? `${myClass.grade}-${myClass.section}` : "—"}</p>
             </div>
             <div>
               <label className={labelClass}>Date</label>
@@ -91,7 +91,7 @@ export default function TeacherDiaryPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-gray-500">Loading...</p>
+            <p className="text-sm text-stone-500">Loading...</p>
           ) : (
             <div className="max-w-xl space-y-4">
               <div>

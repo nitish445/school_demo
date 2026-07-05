@@ -1,4 +1,3 @@
-name,admissionNo,rollNo,grade,section,dob,gender,emergencyContact,medicalNotes,parentName,parentEmail,parentPassword,parentPhone
-Rohan Mehta,ADM1001,12,5,A,2015-04-12,male,9876543210,,Nitish Mehta,nitish.mehta@example.com,TempPass123,9876500000
-Priya Nair,ADM1002,13,5,A,2015-06-30,female,9876543212,Mild peanut allergy,Asha Nair,asha.nair@example.com,TempPass789,9876500001
-Aarav Shah,ADM1003,14,5,A,2015-02-18,male,,,,,,
+name,admissionNo,rollNo,grade,section,dob,gender,address,emergencyContact,medicalNotes,parentName,parentEmail,parentPassword,parentPhone
+Aarav Mehta,ADM4001,1,5,A,2015-04-10,male,"12 MG Road, Bengaluru",9876500001,,Vikram Mehta,vikram.mehta@example.com,TempPass123,9876500000
+Diya Kapoor,ADM4002,2,5,A,2015-07-22,female,"45 Park Street, Kolkata",9876500011,,Neha Kapoor,neha.kapoor@example.com,TempPass456,9876500010

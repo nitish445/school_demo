@@ -5,10 +5,12 @@ import '../../models/models.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import 'parent_attendance_screen.dart';
+import 'parent_calendar_screen.dart';
 import 'parent_dashboard_screen.dart';
 import 'parent_fees_screen.dart';
 import 'parent_homework_screen.dart';
 import 'parent_profile_screen.dart';
+import 'parent_timetable_screen.dart';
 
 extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
@@ -67,6 +69,8 @@ class _ParentHomeShellState extends State<ParentHomeShell> {
           ParentAttendanceScreen(schoolId: schoolId, childId: childId),
           ParentHomeworkScreen(schoolId: schoolId, childId: childId),
           ParentFeesScreen(schoolId: schoolId, childId: childId),
+          ParentTimetableScreen(schoolId: schoolId, childId: childId),
+          ParentCalendarScreen(schoolId: schoolId),
           ParentProfileScreen(schoolId: schoolId, childId: childId),
         ];
 
@@ -100,6 +104,8 @@ class _ParentHomeShellState extends State<ParentHomeShell> {
               NavigationDestination(icon: Icon(Icons.checklist_outlined), label: 'Attendance'),
               NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Homework'),
               NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'Fees'),
+              NavigationDestination(icon: Icon(Icons.schedule_outlined), label: 'Timetable'),
+              NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
               NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
             ],
           ),

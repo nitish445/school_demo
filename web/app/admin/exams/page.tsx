@@ -3,21 +3,37 @@
 import { useState } from "react";
 import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolId } from "@/hooks/useSchoolId";
 import { useCollection } from "@/hooks/useCollection";
-import type { Exam, Subject } from "@/types/models";
+import type { Exam, ExamComponentSet, ExamScheduleEntry, SchoolClass, Subject } from "@/types/models";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui/formStyles";
+import { logActivity } from "@/lib/auditLog";
 
-type ExamSubjectRow = { subjectId: string; date: string; maxMarks: number };
-
-const emptyForm = { name: "", term: "", subjects: [] as ExamSubjectRow[] };
+const emptyForm = { name: "", term: "", schedule: [] as ExamScheduleEntry[] };
 
 export default function ExamsPage() {
   const schoolId = useSchoolId();
+  const { user } = useAuth();
   const { data: exams, loading } = useCollection<Exam>(schoolId ? `schools/${schoolId}/exams` : null);
+  const { data: classes } = useCollection<SchoolClass>(schoolId ? `schools/${schoolId}/classes` : null);
   const { data: subjects } = useCollection<Subject>(schoolId ? `schools/${schoolId}/subjects` : null);
+  const { data: componentSets } = useCollection<ExamComponentSet>(
+    schoolId ? `schools/${schoolId}/examComponents` : null
+  );
+  const grades = [...new Set(classes.map((c) => c.grade))].sort();
+  const pendingApprovals = componentSets.filter((cs) => !cs.approved && cs.components.length > 0);
+
+  async function approveComponentSet(cs: ExamComponentSet) {
+    if (!schoolId) return;
+    await updateDoc(doc(db, `schools/${schoolId}/examComponents/${cs.id}`), {
+      approved: true,
+      approvedBy: user?.email ?? "admin",
+      approvedAt: Date.now(),
+    });
+  }
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Exam | null>(null);
@@ -32,23 +48,23 @@ export default function ExamsPage() {
 
   function openEdit(e: Exam) {
     setEditing(e);
-    setForm({ name: e.name, term: e.term, subjects: e.subjects });
+    setForm({ name: e.name, term: e.term, schedule: e.schedule });
     setOpen(true);
   }
 
-  function addSubjectRow() {
-    setForm({ ...form, subjects: [...form.subjects, { subjectId: "", date: "", maxMarks: 100 }] });
+  function addScheduleRow() {
+    setForm({ ...form, schedule: [...form.schedule, { grade: "", subjectId: "", date: "" }] });
   }
 
-  function updateSubjectRow(i: number, patch: Partial<ExamSubjectRow>) {
+  function updateScheduleRow(i: number, patch: Partial<ExamScheduleEntry>) {
     setForm({
       ...form,
-      subjects: form.subjects.map((s, idx) => (idx === i ? { ...s, ...patch } : s)),
+      schedule: form.schedule.map((s, idx) => (idx === i ? { ...s, ...patch } : s)),
     });
   }
 
-  function removeSubjectRow(i: number) {
-    setForm({ ...form, subjects: form.subjects.filter((_, idx) => idx !== i) });
+  function removeScheduleRow(i: number) {
+    setForm({ ...form, schedule: form.schedule.filter((_, idx) => idx !== i) });
   }
 
   async function handleSubmit() {
@@ -58,13 +74,15 @@ export default function ExamsPage() {
       const payload = {
         name: form.name,
         term: form.term,
-        subjects: form.subjects.filter((s) => s.subjectId && s.date),
+        schedule: form.schedule.filter((s) => s.grade && s.subjectId),
         published: editing?.published ?? false,
       };
       if (editing) {
         await updateDoc(doc(db, `schools/${schoolId}/exams/${editing.id}`), payload);
+        logActivity(schoolId, user, "update", "Exam", form.name);
       } else {
         await addDoc(collection(db, `schools/${schoolId}/exams`), payload);
+        logActivity(schoolId, user, "create", "Exam", form.name);
       }
       setOpen(false);
     } finally {
@@ -75,25 +93,68 @@ export default function ExamsPage() {
   async function togglePublish(e: Exam) {
     if (!schoolId) return;
     await updateDoc(doc(db, `schools/${schoolId}/exams/${e.id}`), { published: !e.published });
+    logActivity(schoolId, user, "update", "Exam", `${e.name} (${e.published ? "unpublished" : "published"})`);
   }
 
   async function handleDelete(e: Exam) {
     if (!schoolId) return;
     if (!confirm(`Delete exam "${e.name}"?`)) return;
     await deleteDoc(doc(db, `schools/${schoolId}/exams/${e.id}`));
+    logActivity(schoolId, user, "delete", "Exam", e.name);
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Exams</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Exams</h1>
         <button onClick={openAdd} className={primaryButtonClass}>
           Create Exam
         </button>
       </div>
 
+      <p className="mb-4 text-sm text-stone-500">
+        Admin sets the exam name, term, and which grade + subject is scheduled on which date -- this applies
+        to every section in that grade (5-A, 5-B, ...), not one row per section. Each subject teacher then
+        defines their own assessment components (max marks, weightage) and enters marks from{" "}
+        <span className="font-medium text-stone-700">Marks</span> in their own portal.
+      </p>
+
+      {pendingApprovals.length > 0 && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <h2 className="mb-2 text-sm font-semibold text-stone-900">
+            Marks Awaiting Approval ({pendingApprovals.length})
+          </h2>
+          <p className="mb-3 text-xs text-stone-600">
+            A class's own class teacher can also approve these -- this list is everything still pending
+            school-wide.
+          </p>
+          <ul className="divide-y divide-amber-100 text-sm">
+            {pendingApprovals.map((cs) => {
+              const exam = exams.find((e) => e.id === cs.examId);
+              const cls = classes.find((c) => c.id === cs.classId);
+              const subject = subjects.find((s) => s.id === cs.subjectId);
+              return (
+                <li key={cs.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="text-stone-800">
+                    <span className="font-medium">{subject?.name ?? cs.subjectId}</span> —{" "}
+                    {cls ? `${cls.grade}-${cls.section}` : cs.classId} —{" "}
+                    {exam ? `${exam.name} (${exam.term})` : cs.examId}
+                  </span>
+                  <button
+                    onClick={() => approveComponentSet(cs)}
+                    className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                  >
+                    Approve
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-stone-500">Loading...</p>
       ) : (
         <DataTable
           rows={exams}
@@ -101,7 +162,7 @@ export default function ExamsPage() {
           columns={[
             { header: "Name", render: (e) => e.name },
             { header: "Term", render: (e) => e.term },
-            { header: "Subjects", render: (e) => e.subjects.length },
+            { header: "Scheduled", render: (e) => e.schedule.length },
             {
               header: "Status",
               render: (e) => (e.published ? "Published" : "Draft"),
@@ -110,7 +171,7 @@ export default function ExamsPage() {
               header: "",
               render: (e) => (
                 <div className="flex gap-3">
-                  <button onClick={() => openEdit(e)} className="text-sm text-gray-700 hover:underline">
+                  <button onClick={() => openEdit(e)} className="text-sm text-stone-700 hover:underline">
                     Edit
                   </button>
                   <button onClick={() => togglePublish(e)} className="text-sm text-blue-700 hover:underline">
@@ -148,40 +209,48 @@ export default function ExamsPage() {
           </div>
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className={labelClass}>Subjects &amp; Schedule</label>
-              <button onClick={addSubjectRow} className="text-sm text-gray-700 hover:underline">
-                + Add subject
+              <label className={labelClass}>Grade-wise Schedule</label>
+              <button onClick={addScheduleRow} className="text-sm text-stone-700 hover:underline">
+                + Add row
               </button>
             </div>
             <div className="space-y-2">
-              {form.subjects.map((s, i) => (
+              {form.schedule.map((s, i) => (
                 <div key={i} className="flex gap-2">
                   <select
+                    value={s.grade}
+                    onChange={(e) => updateScheduleRow(i, { grade: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="">Grade</option>
+                    {grades.map((g) => (
+                      <option key={g} value={g}>
+                        Grade {g}
+                      </option>
+                    ))}
+                  </select>
+                  <select
                     value={s.subjectId}
-                    onChange={(e) => updateSubjectRow(i, { subjectId: e.target.value })}
+                    onChange={(e) => updateScheduleRow(i, { subjectId: e.target.value })}
                     className={inputClass}
                   >
                     <option value="">Subject</option>
-                    {subjects.map((sub) => (
-                      <option key={sub.id} value={sub.id}>
-                        {sub.name}
-                      </option>
-                    ))}
+                    {subjects
+                      .filter((sub) => sub.status !== "disabled" || sub.id === s.subjectId)
+                      .map((sub) => (
+                        <option key={sub.id} value={sub.id}>
+                          {sub.name}
+                          {sub.status === "disabled" ? " (disabled)" : ""}
+                        </option>
+                      ))}
                   </select>
                   <input
                     type="date"
                     value={s.date}
-                    onChange={(e) => updateSubjectRow(i, { date: e.target.value })}
+                    onChange={(e) => updateScheduleRow(i, { date: e.target.value })}
                     className={inputClass}
                   />
-                  <input
-                    type="number"
-                    value={s.maxMarks}
-                    onChange={(e) => updateSubjectRow(i, { maxMarks: Number(e.target.value) })}
-                    className={`${inputClass} w-24`}
-                    placeholder="Max"
-                  />
-                  <button onClick={() => removeSubjectRow(i)} className="text-red-600">
+                  <button onClick={() => removeScheduleRow(i)} className="text-red-600">
                     ✕
                   </button>
                 </div>

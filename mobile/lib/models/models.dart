@@ -18,6 +18,37 @@ AppRole appRoleFromString(String? value) {
   }
 }
 
+class School {
+  final String id;
+  final String name;
+  final String? address;
+  final String academicYear;
+  final List<int> workingDays; // 0 (Sun) - 6 (Sat)
+  final List<String> holidays; // ISO dates
+
+  School({
+    required this.id,
+    required this.name,
+    this.address,
+    required this.academicYear,
+    required this.workingDays,
+    required this.holidays,
+  });
+
+  factory School.fromMap(String id, Map<String, dynamic> map) {
+    return School(
+      id: id,
+      name: map['name'] as String? ?? '',
+      address: map['address'] as String?,
+      academicYear: map['academicYear'] as String? ?? '',
+      workingDays: ((map['workingDays'] as List<dynamic>?) ?? [1, 2, 3, 4, 5, 6])
+          .map((d) => (d as num).toInt())
+          .toList(),
+      holidays: List<String>.from(map['holidays'] as List<dynamic>? ?? []),
+    );
+  }
+}
+
 class TeacherAssignment {
   final String classId;
   final String subjectId;
@@ -40,6 +71,7 @@ class Teacher {
   final List<String> assignedClassIds;
   final String? classTeacherOf;
   final String status;
+  final String? photoUrl;
 
   Teacher({
     required this.id,
@@ -49,6 +81,7 @@ class Teacher {
     required this.assignedClassIds,
     required this.classTeacherOf,
     required this.status,
+    this.photoUrl,
   });
 
   factory Teacher.fromMap(String id, Map<String, dynamic> map) {
@@ -62,6 +95,7 @@ class Teacher {
       assignedClassIds: List<String>.from(map['assignedClassIds'] as List<dynamic>? ?? []),
       classTeacherOf: map['classTeacherOf'] as String?,
       status: map['status'] as String? ?? 'active',
+      photoUrl: map['photoUrl'] as String?,
     );
   }
 }
@@ -71,12 +105,14 @@ class ParentProfile {
   final String name;
   final List<String> childStudentIds;
   final String status;
+  final String? photoUrl;
 
   ParentProfile({
     required this.id,
     required this.name,
     required this.childStudentIds,
     required this.status,
+    this.photoUrl,
   });
 
   factory ParentProfile.fromMap(String id, Map<String, dynamic> map) {
@@ -85,6 +121,7 @@ class ParentProfile {
       name: map['name'] as String? ?? '',
       childStudentIds: List<String>.from(map['childStudentIds'] as List<dynamic>? ?? []),
       status: map['status'] as String? ?? 'active',
+      photoUrl: map['photoUrl'] as String?,
     );
   }
 }
@@ -226,19 +263,41 @@ class Homework {
   }
 }
 
+// One weighted assessment component within a subject (CAT-I, Quiz-I, FAT, etc).
+class ExamComponent {
+  final String id;
+  final String title;
+  final num maxMark;
+  final num weightage;
+
+  ExamComponent({required this.id, required this.title, required this.maxMark, required this.weightage});
+
+  factory ExamComponent.fromMap(Map<String, dynamic> map) {
+    return ExamComponent(
+      id: map['id'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      maxMark: (map['maxMark'] as num?) ?? 0,
+      weightage: (map['weightage'] as num?) ?? 0,
+    );
+  }
+}
+
+// Admin-owned: name, term, and which class+subject sits which exam on which
+// date. No marks-weighting info here -- that's the subject teacher's call,
+// see ExamComponentSet.
 class Exam {
   final String id;
   final String name;
   final String term;
   final bool published;
-  final List<Map<String, dynamic>> subjects;
+  final List<Map<String, dynamic>> schedule; // {classId, subjectId, date}
 
   Exam({
     required this.id,
     required this.name,
     required this.term,
     required this.published,
-    required this.subjects,
+    required this.schedule,
   });
 
   factory Exam.fromMap(String id, Map<String, dynamic> map) {
@@ -247,9 +306,50 @@ class Exam {
       name: map['name'] as String? ?? '',
       term: map['term'] as String? ?? '',
       published: map['published'] as bool? ?? false,
-      subjects: ((map['subjects'] as List<dynamic>?) ?? [])
+      schedule: ((map['schedule'] as List<dynamic>?) ?? [])
           .map((s) => Map<String, dynamic>.from(s as Map))
           .toList(),
+    );
+  }
+}
+
+// Subject-teacher-owned: the weighted assessment breakdown (CAT-I, Quiz-I,
+// FAT, ...) for one class+subject within one exam.
+class ExamComponentSet {
+  final String id; // `${examId}_${classId}_${subjectId}`
+  final String examId;
+  final String classId;
+  final String subjectId;
+  final List<ExamComponent> components;
+  // Gate before a parent can see these marks -- only an admin or the
+  // class's own class teacher can set this true.
+  final bool approved;
+  final String? approvedBy;
+  final int? approvedAt;
+
+  ExamComponentSet({
+    required this.id,
+    required this.examId,
+    required this.classId,
+    required this.subjectId,
+    required this.components,
+    this.approved = false,
+    this.approvedBy,
+    this.approvedAt,
+  });
+
+  factory ExamComponentSet.fromMap(String id, Map<String, dynamic> map) {
+    return ExamComponentSet(
+      id: id,
+      examId: map['examId'] as String? ?? '',
+      classId: map['classId'] as String? ?? '',
+      subjectId: map['subjectId'] as String? ?? '',
+      components: ((map['components'] as List<dynamic>?) ?? [])
+          .map((c) => ExamComponent.fromMap(Map<String, dynamic>.from(c as Map)))
+          .toList(),
+      approved: map['approved'] as bool? ?? false,
+      approvedBy: map['approvedBy'] as String?,
+      approvedAt: map['approvedAt'] as int?,
     );
   }
 }
@@ -258,24 +358,30 @@ class Marks {
   final String id;
   final String studentId;
   final String examId;
-  final Map<String, num> subjectMarks;
-  final String? remarks;
+  // subjectId -> componentId -> scored mark
+  final Map<String, Map<String, num>> componentMarks;
+  // subjectId -> the subject teacher's remark for this exam
+  final Map<String, String> remarks;
 
   Marks({
     required this.id,
     required this.studentId,
     required this.examId,
-    required this.subjectMarks,
-    this.remarks,
+    required this.componentMarks,
+    this.remarks = const {},
   });
 
   factory Marks.fromMap(String id, Map<String, dynamic> map) {
+    final raw = map['componentMarks'] as Map<dynamic, dynamic>? ?? {};
+    final rawRemarks = map['remarks'] as Map<dynamic, dynamic>? ?? {};
     return Marks(
       id: id,
       studentId: map['studentId'] as String? ?? '',
       examId: map['examId'] as String? ?? '',
-      subjectMarks: Map<String, num>.from(map['subjectMarks'] as Map<dynamic, dynamic>? ?? {}),
-      remarks: map['remarks'] as String?,
+      componentMarks: raw.map(
+        (subjectId, marks) => MapEntry(subjectId as String, Map<String, num>.from(marks as Map)),
+      ),
+      remarks: rawRemarks.map((subjectId, remark) => MapEntry(subjectId as String, remark as String)),
     );
   }
 }
@@ -345,6 +451,53 @@ class FeeRecord {
   }
 }
 
+class TimetablePeriod {
+  final int day; // 0 (Sun) - 6 (Sat)
+  final int period;
+  final String? subjectId;
+  final String? label;
+  final String? startTime;
+  final String? endTime;
+
+  TimetablePeriod({
+    required this.day,
+    required this.period,
+    this.subjectId,
+    this.label,
+    this.startTime,
+    this.endTime,
+  });
+
+  factory TimetablePeriod.fromMap(Map<String, dynamic> map) {
+    return TimetablePeriod(
+      day: (map['day'] as num?)?.toInt() ?? 0,
+      period: (map['period'] as num?)?.toInt() ?? 0,
+      subjectId: map['subjectId'] as String?,
+      label: map['label'] as String?,
+      startTime: map['startTime'] as String?,
+      endTime: map['endTime'] as String?,
+    );
+  }
+}
+
+class Timetable {
+  final String id;
+  final String classId;
+  final List<TimetablePeriod> periods;
+
+  Timetable({required this.id, required this.classId, required this.periods});
+
+  factory Timetable.fromMap(String id, Map<String, dynamic> map) {
+    return Timetable(
+      id: id,
+      classId: map['classId'] as String? ?? id,
+      periods: ((map['periods'] as List<dynamic>?) ?? [])
+          .map((p) => TimetablePeriod.fromMap(Map<String, dynamic>.from(p as Map)))
+          .toList(),
+    );
+  }
+}
+
 class Leave {
   final String id;
   final String studentId;
@@ -374,5 +527,56 @@ class Leave {
       reason: map['reason'] as String? ?? '',
       status: map['status'] as String? ?? 'pending',
     );
+  }
+}
+
+enum CalendarEventType { holiday, exam, ptm, event, other }
+
+CalendarEventType calendarEventTypeFromString(String? value) {
+  switch (value) {
+    case 'holiday':
+      return CalendarEventType.holiday;
+    case 'exam':
+      return CalendarEventType.exam;
+    case 'ptm':
+      return CalendarEventType.ptm;
+    case 'other':
+      return CalendarEventType.other;
+    default:
+      return CalendarEventType.event;
+  }
+}
+
+class CalendarEvent {
+  final String id;
+  final String title;
+  final String? description;
+  final String date; // ISO date, start
+  final String? endDate; // ISO date, inclusive span end
+  final CalendarEventType type;
+
+  CalendarEvent({
+    required this.id,
+    required this.title,
+    this.description,
+    required this.date,
+    this.endDate,
+    required this.type,
+  });
+
+  factory CalendarEvent.fromMap(String id, Map<String, dynamic> map) {
+    return CalendarEvent(
+      id: id,
+      title: map['title'] as String? ?? '',
+      description: map['description'] as String?,
+      date: map['date'] as String? ?? '',
+      endDate: map['endDate'] as String?,
+      type: calendarEventTypeFromString(map['type'] as String?),
+    );
+  }
+
+  bool touchesDate(String iso) {
+    if (endDate == null) return date == iso;
+    return date.compareTo(iso) <= 0 && iso.compareTo(endDate!) <= 0;
   }
 }

@@ -59,7 +59,7 @@ export default function AttendanceMonitorPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Attendance</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-stone-900">Attendance</h1>
 
       <div className="mb-6 flex flex-wrap items-end gap-4">
         <div>
@@ -83,16 +83,16 @@ export default function AttendanceMonitorPage() {
           </button>
         )}
         {pct !== null && (
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-stone-600">
             {pct}% present ({presentCount}/{rows.length})
           </span>
         )}
       </div>
 
       {!classId ? (
-        <p className="text-sm text-gray-500">Choose a class to view its attendance.</p>
+        <p className="text-sm text-stone-500">Choose a class to view its attendance.</p>
       ) : loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-stone-500">Loading...</p>
       ) : (
         <DataTable
           rows={rows}

@@ -1,5 +1,6 @@
 "use client";
 
+import { documentId, where } from "firebase/firestore";
 import { useSchoolId } from "@/hooks/useSchoolId";
 import { useCollection } from "@/hooks/useCollection";
 import { useEffectiveChildId } from "@/hooks/useEffectiveChildId";
@@ -11,7 +12,15 @@ export function ChildSelector() {
   const schoolId = useSchoolId();
   const { childStudentIds, effectiveChildId } = useEffectiveChildId();
   const { setSelectedChildId } = useSelectedChild();
-  const { data: students } = useCollection<Student>(schoolId ? `schools/${schoolId}/students` : null);
+  // Scoped to just this parent's own children -- a parent can't list the
+  // whole school's students collection (rules only grant per-child reads
+  // via isMyChild), so an unconstrained query silently returned nothing and
+  // the dropdown fell back to showing raw document IDs.
+  const { data: students } = useCollection<Student>(
+    schoolId && childStudentIds.length > 0 ? `schools/${schoolId}/students` : null,
+    childStudentIds.length > 0 ? [where(documentId(), "in", childStudentIds.slice(0, 10))] : [],
+    [childStudentIds.join(",")]
+  );
 
   if (childStudentIds.length <= 1) return null;
 

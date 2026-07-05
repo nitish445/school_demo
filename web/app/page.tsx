@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Role } from "@/types/models";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { FullScreenLoader } from "@/components/ui/FullScreenLoader";
 
 const DASHBOARD_PATH: Record<Role, string> = {
   admin: "/admin",
@@ -26,9 +27,5 @@ export default function Home() {
     }
   }, [loading, user, resolvedRole, router]);
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#eef4ff,_#f8fbff_55%,_#eef2ff)] text-sm font-medium text-slate-600">
-      Loading...
-    </div>
-  );
+  return <FullScreenLoader />;
 }

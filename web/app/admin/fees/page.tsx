@@ -3,15 +3,18 @@
 import { useMemo, useState } from "react";
 import { addDoc, collection, doc, increment, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolId } from "@/hooks/useSchoolId";
 import { useCollection } from "@/hooks/useCollection";
 import type { FeeRecord, Student } from "@/types/models";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui/formStyles";
+import { logActivity } from "@/lib/auditLog";
 
 export default function FeesPage() {
   const schoolId = useSchoolId();
+  const { user } = useAuth();
   const { data: students, loading: loadingStudents } = useCollection<Student>(
     schoolId ? `schools/${schoolId}/students` : null
   );
@@ -65,6 +68,7 @@ export default function FeesPage() {
         { totalDue, totalPaid: 0 },
         { merge: true }
       );
+      logActivity(schoolId, user, "update", "Fee", `${activeStudent.name} — due set to ₹${totalDue}`);
       setDueOpen(false);
     } finally {
       setSubmitting(false);
@@ -87,6 +91,7 @@ export default function FeesPage() {
         { totalPaid: increment(payAmount) },
         { merge: true }
       );
+      logActivity(schoolId, user, "create", "Fee Payment", `${activeStudent.name} — ₹${payAmount} (${payMode})`);
       setPayOpen(false);
     } finally {
       setSubmitting(false);
@@ -98,15 +103,15 @@ export default function FeesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Fees</h1>
-        <span className="text-sm text-gray-600">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Fees</h1>
+        <span className="text-sm text-stone-600">
           Total pending: ₹{totalPending.toLocaleString()}
         </span>
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-stone-500">Loading...</p>
       ) : (
         <DataTable
           rows={rows}
@@ -123,7 +128,7 @@ export default function FeesPage() {
               header: "",
               render: (r) => (
                 <div className="flex gap-3">
-                  <button onClick={() => openSetDue(r)} className="text-sm text-gray-700 hover:underline">
+                  <button onClick={() => openSetDue(r)} className="text-sm text-stone-700 hover:underline">
                     Set Fee
                   </button>
                   <button

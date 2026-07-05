@@ -28,17 +28,17 @@ export default function ParentHomeworkPage() {
   }
 
   if (childStudentIds.length === 0) {
-    return <p className="text-sm text-gray-500">No children are linked to your account yet.</p>;
+    return <p className="text-sm text-stone-500">No children are linked to your account yet.</p>;
   }
 
   const sorted = [...homework].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Homework</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-stone-900">Homework</h1>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-stone-500">Loading...</p>
       ) : (
         <DataTable
           rows={sorted}

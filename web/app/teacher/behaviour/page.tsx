@@ -75,19 +75,19 @@ export default function TeacherBehaviourPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Behaviour Notes</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Behaviour Notes</h1>
         <button onClick={openAdd} disabled={!effectiveClassId} className={primaryButtonClass}>
           Add Note
         </button>
       </div>
 
-      <p className="mb-6 text-sm text-gray-500">
+      <p className="mb-6 text-sm text-stone-500">
         {myClass ? `Class: ${myClass.grade}-${myClass.section}` : "You are not a class teacher of any class yet."}
       </p>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-stone-500">Loading...</p>
       ) : (
         <DataTable
           rows={notes}

@@ -136,7 +136,7 @@ export default function TeacherAttendancePage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Mark Attendance</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-stone-900">Mark Attendance</h1>
 
       <div className={`${cardClass} mb-6 flex flex-wrap items-end gap-4`}>
         <div>
@@ -162,7 +162,7 @@ export default function TeacherAttendancePage() {
         {activeStudents.length > 0 && (
           <div className="ml-auto flex flex-wrap gap-3">
             {STATUS_OPTIONS.map((o) => (
-              <span key={o.value} className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <span key={o.value} className="flex items-center gap-1.5 text-xs font-medium text-stone-500">
                 <span className={`h-2 w-2 rounded-full ${o.dot}`} />
                 {counts[o.value]} {o.label}
               </span>
@@ -172,11 +172,11 @@ export default function TeacherAttendancePage() {
       </div>
 
       {!effectiveClassId ? (
-        <p className="text-sm text-slate-500">Select a class to mark attendance.</p>
+        <p className="text-sm text-stone-500">Select a class to mark attendance.</p>
       ) : loadingStudents || loadingRecords ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-stone-500">Loading...</p>
       ) : activeStudents.length === 0 ? (
-        <p className="text-sm text-slate-500">No active students in this class.</p>
+        <p className="text-sm text-stone-500">No active students in this class.</p>
       ) : (
         <div className="space-y-2">
           {activeStudents.map((s) => {
@@ -184,13 +184,13 @@ export default function TeacherAttendancePage() {
             return (
               <div
                 key={s.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-white px-4 py-3 shadow-sm"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm"
               >
                 <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-700">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-800">
                     {s.rollNo}
                   </span>
-                  <span className="text-sm font-medium text-slate-900">{s.name}</span>
+                  <span className="text-sm font-medium text-stone-900">{s.name}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {STATUS_OPTIONS.map((o) => (

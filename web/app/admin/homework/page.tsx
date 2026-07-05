@@ -25,13 +25,13 @@ export default function HomeworkMonitorPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Homework</h1>
-      <p className="mb-4 text-sm text-gray-500">
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-stone-900">Homework</h1>
+      <p className="mb-4 text-sm text-stone-500">
         Read-only view across the school — homework is created by class/subject teachers.
       </p>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-stone-500">Loading...</p>
       ) : (
         <DataTable
           rows={homework}

@@ -1,45 +1,59 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  GraduationCap,
+  Users,
+  Contact,
+  ShieldCheck,
+  School,
+  BookOpen,
+  CalendarCheck,
+  CalendarDays,
+  CalendarRange,
+  ClipboardList,
+  NotebookPen,
+  Megaphone,
+  Wallet,
+  History,
+  UserRound,
+} from "lucide-react";
+import { Sidebar, type SidebarSection } from "@/components/ui/Sidebar";
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/students", label: "Students" },
-  { href: "/admin/teachers", label: "Teachers" },
-  { href: "/admin/parents", label: "Parents" },
-  { href: "/admin/classes", label: "Classes" },
-  { href: "/admin/subjects", label: "Subjects" },
-  { href: "/admin/attendance", label: "Attendance" },
-  { href: "/admin/exams", label: "Exams" },
-  { href: "/admin/homework", label: "Homework" },
-  { href: "/admin/announcements", label: "Announcements" },
-  { href: "/admin/fees", label: "Fees" },
+const SECTIONS: SidebarSection[] = [
+  { items: [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }] },
+  {
+    label: "People",
+    items: [
+      { href: "/admin/students", label: "Students", icon: GraduationCap },
+      { href: "/admin/teachers", label: "Teachers", icon: Users },
+      { href: "/admin/parents", label: "Parents", icon: Contact },
+      { href: "/admin/admins", label: "Admins", icon: ShieldCheck },
+    ],
+  },
+  {
+    label: "Academics",
+    items: [
+      { href: "/admin/classes", label: "Classes", icon: School },
+      { href: "/admin/subjects", label: "Subjects", icon: BookOpen },
+      { href: "/admin/attendance", label: "Attendance", icon: CalendarCheck },
+      { href: "/admin/exams", label: "Exams", icon: ClipboardList },
+      { href: "/admin/homework", label: "Homework", icon: NotebookPen },
+      { href: "/admin/timetable", label: "Timetable", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "School",
+    items: [
+      { href: "/admin/calendar", label: "Calendar", icon: CalendarRange },
+      { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
+      { href: "/admin/fees", label: "Fees", icon: Wallet },
+      { href: "/admin/activity", label: "Activity Log", icon: History },
+    ],
+  },
+  { label: "Account", items: [{ href: "/admin/profile", label: "Profile", icon: UserRound }] },
 ];
 
-export function AdminNav() {
-  const pathname = usePathname();
-  return (
-    <nav className="flex w-60 shrink-0 flex-col gap-1 border-r border-indigo-100 bg-[linear-gradient(180deg,_#f8fbff_0%,_#eef4ff_100%)] p-4">
-      <div className="mb-4 rounded-xl bg-indigo-600 px-3 py-3 text-sm font-semibold text-white shadow-sm">
-        School Portal
-      </div>
-      {NAV_ITEMS.map((item) => {
-        const active = pathname === item.href;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`rounded-lg px-3 py-2 text-sm transition ${
-              active
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
-            }`}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+export function AdminNav({ onNavigate, onCloseClick }: { onNavigate?: () => void; onCloseClick?: () => void }) {
+  return <Sidebar sections={SECTIONS} portalName="Admin" onNavigate={onNavigate} onCloseClick={onCloseClick} />;
 }

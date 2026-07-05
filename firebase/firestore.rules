@@ -9,36 +9,38 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function tokenSchoolId() {
-      return request.auth.token.schoolId;
-    }
-
-    function tokenRole() {
-      return request.auth.token.role;
-    }
-
-    // There's no backend left to revoke a disabled user's custom claims (no
-    // Cloud Functions on the free Spark plan), so `status` on their own
-    // `users/{uid}` doc is the real on/off switch: a disabled account keeps
-    // a working Firebase Auth login but loses all school-scoped access here.
-    function myStatus() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status;
+    // Auth/role checks read the caller's own `users/{uid}` doc rather than
+    // custom claims. There's no Cloud Functions on the free Spark plan (and
+    // no way to set custom claims from a browser -- Admin SDK only), so
+    // account creation happens directly from an admin's browser session;
+    // this doc is the only source of truth for who someone is. Repeated
+    // calls resolve to the same cached read within one rule evaluation, so
+    // this isn't N reads per request.
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function inSchool(schoolId) {
-      return signedIn() && tokenSchoolId() == schoolId && myStatus() == 'active';
+      return signedIn() && myProfile().schoolId == schoolId && myProfile().status == 'active';
     }
 
     function isAdmin(schoolId) {
-      return inSchool(schoolId) && tokenRole() == 'admin';
+      return inSchool(schoolId) && myProfile().role == 'admin';
+    }
+
+    // The one admin designation with extra powers: managing other Admin
+    // accounts (create/disable/assign designation). Everything else an
+    // Admin can do, a Principal can also do, since this implies isAdmin().
+    function isPrincipal(schoolId) {
+      return isAdmin(schoolId) && myProfile().designation == 'principal';
     }
 
     function isClassTeacher(schoolId) {
-      return inSchool(schoolId) && tokenRole() == 'classTeacher';
+      return inSchool(schoolId) && myProfile().role == 'classTeacher';
     }
 
     function isSubjectTeacher(schoolId) {
-      return inSchool(schoolId) && tokenRole() == 'subjectTeacher';
+      return inSchool(schoolId) && myProfile().role == 'subjectTeacher';
     }
 
     function isTeacher(schoolId) {
@@ -46,7 +48,7 @@ service cloud.firestore {
     }
 
     function isParent(schoolId) {
-      return inSchool(schoolId) && tokenRole() == 'parent';
+      return inSchool(schoolId) && myProfile().role == 'parent';
     }
 
     function teacherDoc(schoolId) {
@@ -96,17 +98,63 @@ service cloud.firestore {
     }
 
     // ---- top-level users (auth/profile pointer) ----
-    // Created by the admin-run Admin SDK scripts in firebase/functions/scripts
-    // (no Cloud Functions on the free plan to do it from the browser). Once
-    // created, an admin can flip `status` directly from the client -- and
-    // only `status`, so this can't be used to self-promote a role.
+    // Written directly by an admin's browser session when they create a
+    // teacher/parent login (the Firebase Auth account itself is created via
+    // a throwaway secondary app instance client-side -- see
+    // web/lib/createAccount.ts -- since custom claims can't be set without
+    // Admin SDK, this doc is the only source of truth for role/schoolId).
+    // Admins can also still be bootstrapped via the Admin SDK script.
 
     match /users/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin(resource.data.schoolId));
       allow list: if false;
-      allow create: if false; // Admin SDK script only
-      allow update: if isAdmin(resource.data.schoolId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow create: if request.resource.data.status == 'active' && (
+        (request.resource.data.role == 'admin' && isPrincipal(request.resource.data.schoolId)) ||
+        (request.resource.data.role in ['classTeacher', 'subjectTeacher', 'parent'] &&
+          isAdmin(request.resource.data.schoolId))
+      );
+      // Status toggling on an Admin account is Principal-only (so a regular
+      // Admin can't disable/re-enable another Admin); everyone else follows
+      // the existing isAdmin() rule. Designation re-assignment (Incharge /
+      // Lab Assistant / plain Teacher) is also Principal-only, and can never
+      // be used to grant 'principal' itself -- that's bootstrap-only.
+      allow update: if (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+        (resource.data.role == 'admin' ? isPrincipal(resource.data.schoolId) : isAdmin(resource.data.schoolId))
+      ) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) &&
+        isAdmin(resource.data.schoolId) &&
+        resource.data.role in ['classTeacher', 'subjectTeacher'] &&
+        request.resource.data.role in ['classTeacher', 'subjectTeacher']
+      ) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['designation']) &&
+        isPrincipal(resource.data.schoolId) &&
+        resource.data.role == 'admin' &&
+        request.resource.data.designation in ['incharge', 'labAssistant', 'teacher']
+      ) || (
+        // Promoting an existing Teacher/Class Teacher to Admin (Principal
+        // only) -- the "select already listed faculty" path on the Admins
+        // page, so a teacher doesn't need a second, brand-new login.
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'designation']) &&
+        isPrincipal(resource.data.schoolId) &&
+        resource.data.role in ['classTeacher', 'subjectTeacher'] &&
+        request.resource.data.role == 'admin' &&
+        request.resource.data.designation in ['incharge', 'labAssistant', 'teacher']
+      ) || (
+        // Removing Admin access from someone (Principal only, and never the
+        // Principal's own account) -- the reverse of the promotion above.
+        // `designation` is dropped entirely (only meaningful for admins).
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'designation']) &&
+        isPrincipal(resource.data.schoolId) &&
+        resource.data.role == 'admin' &&
+        resource.data.designation != 'principal' &&
+        request.resource.data.role in ['classTeacher', 'subjectTeacher'] &&
+        !('designation' in request.resource.data)
+      ) || (
+        // Anyone can set their own profile picture on their own doc.
+        request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoUrl'])
+      );
       allow delete: if false;
     }
 
@@ -115,24 +163,61 @@ service cloud.firestore {
       allow write: if isAdmin(schoolId);
 
       // ---- staff / parent profiles ----
-      // The account itself (Firebase Auth user + this doc) is created by an
-      // admin-run script. Field updates (status, assignments, roster links)
-      // happen directly from the admin's browser.
+      // Created directly by an admin's browser session alongside the
+      // matching `users/{uid}` doc above. Field updates (status,
+      // assignments, roster links) also happen directly from the browser.
 
       match /teachers/{teacherId} {
-        allow get: if isAdmin(schoolId) || request.auth.uid == teacherId;
-        allow list: if isAdmin(schoolId);
-        allow create: if false; // Admin SDK script only
-        allow update: if isAdmin(schoolId);
+        // Parents get read-only access too, for the Teacher Directory page
+        // (name/email/class/subjects -- no phone number is ever stored here).
+        // Teachers can list this collection too, to resolve "who teaches
+        // this period" on the Timetable page.
+        allow get: if isAdmin(schoolId) || isParent(schoolId) || isTeacher(schoolId) || request.auth.uid == teacherId;
+        allow list: if isAdmin(schoolId) || isParent(schoolId) || isTeacher(schoolId);
+        allow create: if isAdmin(schoolId);
+        allow update: if isAdmin(schoolId) || (
+          request.auth.uid == teacherId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoUrl'])
+        );
         allow delete: if false;
       }
 
       match /parents/{parentId} {
         allow get: if isAdmin(schoolId) || request.auth.uid == parentId;
         allow list: if isAdmin(schoolId);
-        allow create: if false; // Admin SDK script only
-        allow update: if isAdmin(schoolId);
+        allow create: if isAdmin(schoolId);
+        allow update: if isAdmin(schoolId) || (
+          request.auth.uid == parentId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoUrl'])
+        );
         allow delete: if false;
+      }
+
+      match /admins/{adminId} {
+        // Viewing the Admins list is fine for any Admin; creating new Admin
+        // accounts, editing one (status, designation), or removing Admin
+        // access (delete, paired with the role/designation update on
+        // users/{uid} in the same batch) is Principal-only, and can never
+        // target the Principal's own record. Any admin can still set their
+        // own profile picture.
+        allow get: if isAdmin(schoolId) || request.auth.uid == adminId;
+        allow list: if isAdmin(schoolId);
+        allow create: if isPrincipal(schoolId);
+        allow update: if isPrincipal(schoolId) || (
+          request.auth.uid == adminId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoUrl'])
+        );
+        allow delete: if isPrincipal(schoolId) && resource.data.designation != 'principal';
+      }
+
+      // ---- activity / audit log ----
+      // Append-only: written by the client alongside whatever it's
+      // describing (no Cloud Functions on the free plan to do this
+      // server-side), so entries can't be edited or removed after the fact.
+      match /auditLog/{logId} {
+        allow read: if isAdmin(schoolId);
+        allow create: if isAdmin(schoolId) && request.resource.data.actorUid == request.auth.uid;
+        allow update, delete: if false;
       }
 
       // ---- academic structure ----
@@ -145,6 +230,22 @@ service cloud.firestore {
       match /subjects/{subjectId} {
         allow read: if inSchool(schoolId);
         allow write: if isAdmin(schoolId);
+      }
+
+      // ---- timetables (one doc per class, id == classId) ----
+
+      match /timetables/{classId} {
+        allow read: if isAdmin(schoolId) || isTeacher(schoolId) || isParent(schoolId);
+        // A class (home-room) teacher can maintain their own class's
+        // schedule, same as attendance/diary/behaviour notes.
+        allow write: if isAdmin(schoolId) || isMyClass(schoolId, classId);
+      }
+
+      // ---- academic calendar (holidays, exam dates, PTMs, events) ----
+
+      match /events/{eventId} {
+        allow read: if inSchool(schoolId);
+        allow create, update, delete: if isAdmin(schoolId);
       }
 
       // ---- students ----
@@ -198,6 +299,33 @@ service cloud.firestore {
         allow read: if isAdmin(schoolId) || isTeacher(schoolId) ||
           (isParent(schoolId) && resource.data.published == true);
         allow write: if isAdmin(schoolId);
+      }
+
+      // ---- exam components (subject-teacher-owned weightage breakdown) ----
+      // Deliberately a separate collection from `exams` so a subject teacher
+      // can be granted write access scoped to their own class+subject
+      // without also being able to touch the admin-owned exam name/schedule
+      // -- Firestore rules can't cleanly scope write access to one element
+      // of an array field on a shared document. No score data lives here
+      // (just component titles/max/weightage), so broad read is fine, same
+      // as `subjects`.
+      match /examComponents/{componentSetId} {
+        allow read: if inSchool(schoolId);
+        // The subject teacher can freely save their components/marks, but
+        // cannot mark their own submission `approved` -- only an admin or
+        // the class's own class teacher can flip that on, so a mistake
+        // doesn't reach parents unreviewed.
+        allow create: if isAdmin(schoolId) ||
+          isMyClass(schoolId, request.resource.data.classId) ||
+          (teachesClassSubject(schoolId, request.resource.data.classId, request.resource.data.subjectId) &&
+            request.resource.data.approved != true);
+        allow update: if isAdmin(schoolId) ||
+          isMyClass(schoolId, resource.data.classId) ||
+          (teachesClassSubject(schoolId, resource.data.classId, resource.data.subjectId) &&
+            request.resource.data.approved != true);
+        allow delete: if isAdmin(schoolId) ||
+          isMyClass(schoolId, resource.data.classId) ||
+          teachesClassSubject(schoolId, resource.data.classId, resource.data.subjectId);
       }
 
       match /marks/{markId} {
@@ -259,10 +387,16 @@ service cloud.firestore {
       // ---- daily diary (one entry per class per day) ----
 
       match /diary/{entryId} {
-        allow read: if isAdmin(schoolId)
-          || isMyClass(schoolId, resource.data.classId)
-          || teachesInClass(schoolId, resource.data.classId)
-          || isMyChildrenClass(schoolId, resource.data.studentIds);
+        // A diary doc for "today" often doesn't exist yet (no entry saved).
+        // resource is null in that case, so resource.data.* would error out
+        // rules evaluation entirely (surfacing as permission-denied) unless
+        // we explicitly allow the not-found case for anyone in the school.
+        allow read: if resource == null
+          ? inSchool(schoolId)
+          : (isAdmin(schoolId)
+            || isMyClass(schoolId, resource.data.classId)
+            || teachesInClass(schoolId, resource.data.classId)
+            || isMyChildrenClass(schoolId, resource.data.studentIds));
         allow create, update: if isAdmin(schoolId) || isMyClass(schoolId, request.resource.data.classId);
         allow delete: if isAdmin(schoolId) || isMyClass(schoolId, resource.data.classId);
       }
