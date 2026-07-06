@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,7 @@ import { useCollection } from "@/hooks/useCollection";
 import type { Exam, ExamComponentSet, ExamScheduleEntry, SchoolClass, Subject } from "@/types/models";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
+import { downloadCsv } from "@/lib/csv";
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui/formStyles";
 import { logActivity } from "@/lib/auditLog";
 
@@ -39,6 +40,7 @@ export default function ExamsPage() {
   const [editing, setEditing] = useState<Exam | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [scheduleMonth, setScheduleMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   function openAdd() {
     setEditing(null);
@@ -103,6 +105,40 @@ export default function ExamsPage() {
     logActivity(schoolId, user, "delete", "Exam", e.name);
   }
 
+  function subjectName(subjectId: string) {
+    return subjects.find((s) => s.id === subjectId)?.name ?? subjectId;
+  }
+
+  const scheduleEntries = useMemo(
+    () =>
+      exams
+        .flatMap((e) =>
+          e.schedule.map((s) => ({
+            id: `${e.id}_${s.grade}_${s.subjectId}_${s.date}`,
+            examName: e.name,
+            term: e.term,
+            grade: s.grade,
+            subjectId: s.subjectId,
+            date: s.date,
+          }))
+        )
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [exams]
+  );
+
+  const monthSchedule = useMemo(
+    () => scheduleEntries.filter((s) => s.date.slice(0, 7) === scheduleMonth),
+    [scheduleEntries, scheduleMonth]
+  );
+
+  function exportMonthSchedule() {
+    downloadCsv(
+      `exam-schedule-${scheduleMonth}.csv`,
+      ["Exam", "Term", "Grade", "Subject", "Date"],
+      monthSchedule.map((s) => [s.examName, s.term, `Grade ${s.grade}`, subjectName(s.subjectId), s.date])
+    );
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -118,6 +154,36 @@ export default function ExamsPage() {
         defines their own assessment components (max marks, weightage) and enters marks from{" "}
         <span className="font-medium text-stone-700">Marks</span> in their own portal.
       </p>
+
+      <div className="mb-8 rounded-lg border border-stone-200 p-4">
+        <div className="mb-3 flex flex-wrap items-end gap-4">
+          <div>
+            <label className={labelClass}>Exam schedule for month</label>
+            <input
+              type="month"
+              value={scheduleMonth}
+              onChange={(e) => setScheduleMonth(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          {monthSchedule.length > 0 && (
+            <button onClick={exportMonthSchedule} className={secondaryButtonClass}>
+              Export CSV
+            </button>
+          )}
+        </div>
+        <DataTable
+          rows={monthSchedule}
+          emptyMessage="No exams scheduled in this month."
+          columns={[
+            { header: "Exam", render: (s) => s.examName },
+            { header: "Term", render: (s) => s.term },
+            { header: "Grade", render: (s) => `Grade ${s.grade}` },
+            { header: "Subject", render: (s) => subjectName(s.subjectId) },
+            { header: "Date", render: (s) => s.date },
+          ]}
+        />
+      </div>
 
       {pendingApprovals.length > 0 && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
