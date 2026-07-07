@@ -41,12 +41,15 @@ class _TeacherHomeShellState extends State<TeacherHomeShell> {
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
         final teacher = snapshot.data;
         if (teacher == null) {
           return const Scaffold(
-            body: Center(child: Text('Teacher profile not found. Contact your school admin.')),
+            body: Center(
+                child: Text(
+                    'Teacher profile not found. Contact your school admin.')),
           );
         }
         final classIds = <String>{
@@ -55,11 +58,15 @@ class _TeacherHomeShellState extends State<TeacherHomeShell> {
         }.toList();
 
         final tabs = [
-          TeacherDashboardScreen(schoolId: schoolId, teacher: teacher, classIds: classIds),
+          TeacherDashboardScreen(
+              schoolId: schoolId, teacher: teacher, classIds: classIds),
           TeacherAttendanceScreen(schoolId: schoolId, classIds: classIds),
-          TeacherHomeworkScreen(schoolId: schoolId, teacher: teacher, classIds: classIds),
-          TeacherMarksScreen(schoolId: schoolId, teacher: teacher, classIds: classIds),
-          TeacherTimetableScreen(schoolId: schoolId, teacher: teacher, classIds: classIds),
+          TeacherHomeworkScreen(
+              schoolId: schoolId, teacher: teacher, classIds: classIds),
+          TeacherMarksScreen(
+              schoolId: schoolId, teacher: teacher, classIds: classIds),
+          TeacherTimetableScreen(
+              schoolId: schoolId, teacher: teacher, classIds: classIds),
           TeacherCalendarScreen(schoolId: schoolId),
           TeacherProfileScreen(schoolId: schoolId, teacher: teacher),
         ];
@@ -70,13 +77,20 @@ class _TeacherHomeShellState extends State<TeacherHomeShell> {
             selectedIndex: _tab,
             onDestinationSelected: (i) => setState(() => _tab = i),
             destinations: const [
-              NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-              NavigationDestination(icon: Icon(Icons.checklist_outlined), label: 'Attendance'),
-              NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Homework'),
-              NavigationDestination(icon: Icon(Icons.grade_outlined), label: 'Marks'),
-              NavigationDestination(icon: Icon(Icons.schedule_outlined), label: 'Timetable'),
-              NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
-              NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+              NavigationDestination(
+                  icon: Icon(Icons.home_outlined), label: 'Home'),
+              NavigationDestination(
+                  icon: Icon(Icons.checklist_outlined), label: 'Attendance'),
+              NavigationDestination(
+                  icon: Icon(Icons.menu_book_outlined), label: 'Homework'),
+              NavigationDestination(
+                  icon: Icon(Icons.grade_outlined), label: 'Marks'),
+              NavigationDestination(
+                  icon: Icon(Icons.schedule_outlined), label: 'Timetable'),
+              NavigationDestination(
+                  icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
+              NavigationDestination(
+                  icon: Icon(Icons.person_outline), label: 'Profile'),
             ],
           ),
         );

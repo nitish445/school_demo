@@ -4,8 +4,18 @@ import '../models/models.dart';
 
 const List<String> _dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const List<String> _monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 const Map<CalendarEventType, Color> _typeColor = {
@@ -23,7 +33,11 @@ String _isoDate(DateTime d) =>
 /// environment can't run `flutter pub get`/analyze, so a new unverified
 /// third-party package is riskier than this simple GridView).
 class MonthCalendar extends StatefulWidget {
-  const MonthCalendar({super.key, required this.events, this.holidays = const [], this.onDayTap});
+  const MonthCalendar(
+      {super.key,
+      required this.events,
+      this.holidays = const [],
+      this.onDayTap});
 
   final List<CalendarEvent> events;
   final List<String> holidays;
@@ -44,13 +58,17 @@ class _MonthCalendarState extends State<MonthCalendar> {
   }
 
   void _changeMonth(int delta) {
-    setState(() => _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + delta, 1));
+    setState(() => _visibleMonth =
+        DateTime(_visibleMonth.year, _visibleMonth.month + delta, 1));
   }
 
   @override
   Widget build(BuildContext context) {
-    final startWeekday = DateTime(_visibleMonth.year, _visibleMonth.month, 1).weekday % 7; // Dart: Mon=1..Sun=7 -> Sun=0
-    final gridStart = DateTime(_visibleMonth.year, _visibleMonth.month, 1 - startWeekday);
+    final startWeekday =
+        DateTime(_visibleMonth.year, _visibleMonth.month, 1).weekday %
+            7; // Dart: Mon=1..Sun=7 -> Sun=0
+    final gridStart =
+        DateTime(_visibleMonth.year, _visibleMonth.month, 1 - startWeekday);
     final todayIso = _isoDate(DateTime.now());
     final holidaySet = widget.holidays.toSet();
 
@@ -59,17 +77,24 @@ class _MonthCalendarState extends State<MonthCalendar> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeMonth(-1)),
+            IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () => _changeMonth(-1)),
             Text(
               '${_monthNames[_visibleMonth.month - 1]} ${_visibleMonth.year}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeMonth(1)),
+            IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: () => _changeMonth(1)),
           ],
         ),
         Row(
           children: _dayNames
-              .map((d) => Expanded(child: Center(child: Text(d, style: Theme.of(context).textTheme.bodySmall))))
+              .map((d) => Expanded(
+                  child: Center(
+                      child: Text(d,
+                          style: Theme.of(context).textTheme.bodySmall))))
               .toList(),
         ),
         GridView.count(
@@ -80,7 +105,8 @@ class _MonthCalendarState extends State<MonthCalendar> {
             final day = gridStart.add(Duration(days: i));
             final iso = _isoDate(day);
             final inMonth = day.month == _visibleMonth.month;
-            final dayEvents = widget.events.where((e) => e.touchesDate(iso)).toList();
+            final dayEvents =
+                widget.events.where((e) => e.touchesDate(iso)).toList();
             final isHoliday = holidaySet.contains(iso);
             final isToday = iso == todayIso;
 
@@ -100,7 +126,8 @@ class _MonthCalendarState extends State<MonthCalendar> {
                       height: 22,
                       alignment: Alignment.center,
                       decoration: isToday
-                          ? const BoxDecoration(shape: BoxShape.circle, color: Colors.black87)
+                          ? const BoxDecoration(
+                              shape: BoxShape.circle, color: Colors.black87)
                           : null,
                       child: Text(
                         '${day.day}',
@@ -123,8 +150,11 @@ class _MonthCalendarState extends State<MonthCalendar> {
                               (e) => Container(
                                 width: 4,
                                 height: 4,
-                                margin: const EdgeInsets.symmetric(horizontal: 1),
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: _typeColor[e.type]),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 1),
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _typeColor[e.type]),
                               ),
                             )
                             .toList(),

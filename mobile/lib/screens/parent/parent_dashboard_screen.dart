@@ -8,7 +8,8 @@ import '../../services/firestore_service.dart';
 String _todayIso() => DateTime.now().toIso8601String().substring(0, 10);
 
 class ParentDashboardScreen extends StatelessWidget {
-  const ParentDashboardScreen({super.key, required this.schoolId, required this.childId});
+  const ParentDashboardScreen(
+      {super.key, required this.schoolId, required this.childId});
 
   final String schoolId;
   final String childId;
@@ -19,13 +20,18 @@ class ParentDashboardScreen extends StatelessWidget {
     final outline = Theme.of(context).colorScheme.outline;
 
     return StreamBuilder<Student?>(
-      stream: FirestoreService.docStream('schools/$schoolId/students/$childId', Student.fromMap),
+      stream: FirestoreService.docStream(
+          'schools/$schoolId/students/$childId', Student.fromMap),
       builder: (context, studentSnap) {
         final student = studentSnap.data;
         return Scaffold(
           appBar: AppBar(
             title: Text(student?.name ?? 'Dashboard'),
-            actions: [IconButton(icon: const Icon(Icons.logout), onPressed: () => auth.signOut())],
+            actions: [
+              IconButton(
+                  icon: const Icon(Icons.logout),
+                  onPressed: () => auth.signOut())
+            ],
           ),
           body: ListView(
             padding: const EdgeInsets.all(16),
@@ -42,7 +48,9 @@ class ParentDashboardScreen extends StatelessWidget {
                             .where('date', isEqualTo: _todayIso()),
                       ),
                       builder: (context, snap) {
-                        final status = snap.data?.isNotEmpty == true ? snap.data!.first.status : 'Not marked';
+                        final status = snap.data?.isNotEmpty == true
+                            ? snap.data!.first.status
+                            : 'Not marked';
                         return _StatCard(
                           label: 'Today',
                           value: status,
@@ -58,7 +66,8 @@ class ParentDashboardScreen extends StatelessWidget {
                       stream: FirestoreService.collectionStream(
                         'schools/$schoolId/homework',
                         Homework.fromMap,
-                        build: (q) => q.where('studentIds', arrayContains: childId),
+                        build: (q) =>
+                            q.where('studentIds', arrayContains: childId),
                       ),
                       builder: (context, snap) {
                         final pending = (snap.data ?? [])
@@ -77,10 +86,14 @@ class ParentDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               StreamBuilder<FeeRecord?>(
-                stream: FirestoreService.docStream('schools/$schoolId/fees/$childId', FeeRecord.fromMap),
+                stream: FirestoreService.docStream(
+                    'schools/$schoolId/fees/$childId', FeeRecord.fromMap),
                 builder: (context, snap) {
                   final fee = snap.data;
-                  final pending = fee == null ? 0 : (fee.totalDue - fee.totalPaid).clamp(0, double.infinity);
+                  final pending = fee == null
+                      ? 0
+                      : (fee.totalDue - fee.totalPaid)
+                          .clamp(0, double.infinity);
                   return _StatCard(
                     label: 'Fees Pending',
                     value: '₹${pending.toStringAsFixed(0)}',
@@ -98,9 +111,11 @@ class ParentDashboardScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.campaign_outlined, size: 18, color: outline),
+                          Icon(Icons.campaign_outlined,
+                              size: 18, color: outline),
                           const SizedBox(width: 8),
-                          Text('Latest Notices', style: Theme.of(context).textTheme.titleMedium),
+                          Text('Latest Notices',
+                              style: Theme.of(context).textTheme.titleMedium),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -108,11 +123,13 @@ class ParentDashboardScreen extends StatelessWidget {
                         stream: FirestoreService.collectionStream(
                           'schools/$schoolId/announcements',
                           Announcement.fromMap,
-                          build: (q) => q.orderBy('createdAt', descending: true).limit(5),
+                          build: (q) =>
+                              q.orderBy('createdAt', descending: true).limit(5),
                         ),
                         builder: (context, snap) {
                           final items = snap.data ?? [];
-                          if (items.isEmpty) return const Text('No announcements yet.');
+                          if (items.isEmpty)
+                            return const Text('No announcements yet.');
                           return Column(
                             children: [
                               for (var i = 0; i < items.length; i++) ...[
@@ -151,7 +168,11 @@ class ParentDashboardScreen extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value, required this.icon, required this.tint});
+  const _StatCard(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.tint});
 
   final String label;
   final String value;

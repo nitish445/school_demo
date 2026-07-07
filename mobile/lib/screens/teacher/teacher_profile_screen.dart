@@ -16,7 +16,8 @@ T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T) test) {
 }
 
 class TeacherProfileScreen extends StatelessWidget {
-  const TeacherProfileScreen({super.key, required this.schoolId, required this.teacher});
+  const TeacherProfileScreen(
+      {super.key, required this.schoolId, required this.teacher});
 
   final String schoolId;
   final Teacher teacher;
@@ -29,26 +30,37 @@ class TeacherProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: () => auth.signOut())],
+        actions: [
+          IconButton(
+              icon: const Icon(Icons.logout), onPressed: () => auth.signOut())
+        ],
       ),
       body: StreamBuilder<List<SchoolClass>>(
-        stream: FirestoreService.collectionStream('schools/$schoolId/classes', SchoolClass.fromMap),
+        stream: FirestoreService.collectionStream(
+            'schools/$schoolId/classes', SchoolClass.fromMap),
         builder: (context, classesSnap) {
           final classes = classesSnap.data ?? [];
           return StreamBuilder<List<Subject>>(
-            stream: FirestoreService.collectionStream('schools/$schoolId/subjects', Subject.fromMap),
+            stream: FirestoreService.collectionStream(
+                'schools/$schoolId/subjects', Subject.fromMap),
             builder: (context, subjectsSnap) {
               final subjects = subjectsSnap.data ?? [];
 
-              SchoolClass? findClass(String id) => _firstWhereOrNull(classes, (c) => c.id == id);
-              Subject? findSubject(String id) => _firstWhereOrNull(subjects, (s) => s.id == id);
+              SchoolClass? findClass(String id) =>
+                  _firstWhereOrNull(classes, (c) => c.id == id);
+              Subject? findSubject(String id) =>
+                  _firstWhereOrNull(subjects, (s) => s.id == id);
 
-              final homeRoom = teacher.classTeacherOf != null ? findClass(teacher.classTeacherOf!) : null;
+              final homeRoom = teacher.classTeacherOf != null
+                  ? findClass(teacher.classTeacherOf!)
+                  : null;
               final taught = teacher.assignments
                   .map((a) {
                     final c = findClass(a.classId);
                     final s = findSubject(a.subjectId);
-                    return c != null && s != null ? '${s.name} (${c.label})' : null;
+                    return c != null && s != null
+                        ? '${s.name} (${c.label})'
+                        : null;
                   })
                   .whereType<String>()
                   .toList();
@@ -63,10 +75,14 @@ class TeacherProfileScreen extends StatelessWidget {
                     photoUrl: teacher.photoUrl,
                     extraDocPaths: ['schools/$schoolId/teachers/$uid'],
                     badges: [
-                      BadgeChip(teacher.classTeacherOf != null ? 'Class Teacher' : 'Subject Teacher'),
+                      BadgeChip(teacher.classTeacherOf != null
+                          ? 'Class Teacher'
+                          : 'Subject Teacher'),
                       BadgeChip(
                         teacher.status == 'disabled' ? 'Disabled' : 'Active',
-                        variant: teacher.status == 'disabled' ? BadgeVariant.warning : BadgeVariant.success,
+                        variant: teacher.status == 'disabled'
+                            ? BadgeVariant.warning
+                            : BadgeVariant.success,
                       ),
                     ],
                   ),
@@ -77,9 +93,11 @@ class TeacherProfileScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Account Details', style: Theme.of(context).textTheme.titleMedium),
+                          Text('Account Details',
+                              style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 8),
-                          Text('Employee ID: ${teacher.employeeId.isNotEmpty ? teacher.employeeId : '—'}'),
+                          Text(
+                              'Employee ID: ${teacher.employeeId.isNotEmpty ? teacher.employeeId : '—'}'),
                         ],
                       ),
                     ),
@@ -91,11 +109,13 @@ class TeacherProfileScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Teaching Assignments', style: Theme.of(context).textTheme.titleMedium),
+                          Text('Teaching Assignments',
+                              style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 8),
                           Text('Class Teacher Of: ${homeRoom?.label ?? '—'}'),
                           const SizedBox(height: 4),
-                          Text('Subjects Taught: ${taught.isNotEmpty ? taught.join(', ') : '—'}'),
+                          Text(
+                              'Subjects Taught: ${taught.isNotEmpty ? taught.join(', ') : '—'}'),
                         ],
                       ),
                     ),
@@ -108,13 +128,15 @@ class TeacherProfileScreen extends StatelessWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         final classIds = <String>{
-                          if (teacher.classTeacherOf != null) teacher.classTeacherOf!,
+                          if (teacher.classTeacherOf != null)
+                            teacher.classTeacherOf!,
                           ...teacher.assignedClassIds,
                         }.toList();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => TeacherReportCardScreen(schoolId: schoolId, classIds: classIds),
+                            builder: (context) => TeacherReportCardScreen(
+                                schoolId: schoolId, classIds: classIds),
                           ),
                         );
                       },

@@ -103,9 +103,11 @@ SubjectResult computeSubjectResult(
   final totalMax = components.fold<num>(0, (sum, c) => sum + c.maxMark);
   final totalWeightage = components.fold<num>(0, (sum, c) => sum + c.weightage);
   final totalScored = rows.fold<num>(0, (sum, r) => sum + (r.scored ?? 0));
-  final totalWeightageMark = rows.fold<double>(0, (sum, r) => sum + (r.weightageMark ?? 0));
+  final totalWeightageMark =
+      rows.fold<double>(0, (sum, r) => sum + (r.weightageMark ?? 0));
   final lostWeightage = totalWeightage - totalWeightageMark;
-  final percentage = totalWeightage > 0 ? (totalWeightageMark / totalWeightage) * 100 : 0.0;
+  final percentage =
+      totalWeightage > 0 ? (totalWeightageMark / totalWeightage) * 100 : 0.0;
 
   return SubjectResult(
     subjectId: subjectId,
@@ -143,17 +145,24 @@ List<SubjectResult> computeAllSubjectResults(
   final results = <SubjectResult>[];
   for (final exam in exams) {
     final record = _firstWhereOrNull(marks, (m) => m.examId == exam.id);
-    final myScheduleEntries = exam.schedule.where((s) => s['grade'] == studentGrade);
+    final myScheduleEntries =
+        exam.schedule.where((s) => s['grade'] == studentGrade);
     for (final entry in myScheduleEntries) {
       final subjectId = entry['subjectId'] as String? ?? '';
       final componentSet = _firstWhereOrNull(
         componentSets,
-        (cs) => cs.examId == exam.id && cs.classId == studentClassId && cs.subjectId == subjectId,
+        (cs) =>
+            cs.examId == exam.id &&
+            cs.classId == studentClassId &&
+            cs.subjectId == subjectId,
       );
       // Not visible to parents/summary stats until an admin or class teacher
       // approves it -- a subject teacher's own save is not enough.
-      if (componentSet == null || componentSet.components.isEmpty || !componentSet.approved) continue;
-      final result = computeSubjectResult(subjectId, componentSet.components, record?.componentMarks[subjectId]);
+      if (componentSet == null ||
+          componentSet.components.isEmpty ||
+          !componentSet.approved) continue;
+      final result = computeSubjectResult(subjectId, componentSet.components,
+          record?.componentMarks[subjectId]);
       if (!result.components.any((c) => c.present)) continue;
       results.add(result);
     }
@@ -169,7 +178,10 @@ class OverallSummary {
 }
 
 OverallSummary computeOverallSummary(List<SubjectResult> results) {
-  if (results.isEmpty) return OverallSummary(averagePercentage: 0, overallGrade: '—');
-  final average = results.map((r) => r.percentage).reduce((a, b) => a + b) / results.length;
-  return OverallSummary(averagePercentage: average, overallGrade: gradeForPercentage(average));
+  if (results.isEmpty)
+    return OverallSummary(averagePercentage: 0, overallGrade: '—');
+  final average =
+      results.map((r) => r.percentage).reduce((a, b) => a + b) / results.length;
+  return OverallSummary(
+      averagePercentage: average, overallGrade: gradeForPercentage(average));
 }

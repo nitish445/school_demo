@@ -14,13 +14,15 @@ T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T) test) {
 }
 
 class TeacherReportCardScreen extends StatefulWidget {
-  const TeacherReportCardScreen({super.key, required this.schoolId, required this.classIds});
+  const TeacherReportCardScreen(
+      {super.key, required this.schoolId, required this.classIds});
 
   final String schoolId;
   final List<String> classIds;
 
   @override
-  State<TeacherReportCardScreen> createState() => _TeacherReportCardScreenState();
+  State<TeacherReportCardScreen> createState() =>
+      _TeacherReportCardScreenState();
 }
 
 class _TeacherReportCardScreenState extends State<TeacherReportCardScreen> {
@@ -38,7 +40,8 @@ class _TeacherReportCardScreenState extends State<TeacherReportCardScreen> {
     setState(() => _exporting = true);
     try {
       final bytes = await buildMarksheetsPdf(widget.schoolId, [student]);
-      await Printing.sharePdf(bytes: bytes, filename: '${student.name} - Report Card.pdf');
+      await Printing.sharePdf(
+          bytes: bytes, filename: '${student.name} - Report Card.pdf');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -49,7 +52,8 @@ class _TeacherReportCardScreenState extends State<TeacherReportCardScreen> {
     setState(() => _exporting = true);
     try {
       final bytes = await buildMarksheetsPdf(widget.schoolId, students);
-      await Printing.sharePdf(bytes: bytes, filename: '$classLabel - Marksheets.pdf');
+      await Printing.sharePdf(
+          bytes: bytes, filename: '$classLabel - Marksheets.pdf');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -64,15 +68,22 @@ class _TeacherReportCardScreenState extends State<TeacherReportCardScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: StreamBuilder<List<SchoolClass>>(
-              stream: FirestoreService.collectionStream('schools/${widget.schoolId}/classes', SchoolClass.fromMap),
+              stream: FirestoreService.collectionStream(
+                  'schools/${widget.schoolId}/classes', SchoolClass.fromMap),
               builder: (context, classSnap) {
-                final classes = (classSnap.data ?? []).where((c) => widget.classIds.contains(c.id)).toList();
+                final classes = (classSnap.data ?? [])
+                    .where((c) => widget.classIds.contains(c.id))
+                    .toList();
                 return Column(
                   children: [
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       value: _classId,
                       decoration: const InputDecoration(labelText: 'Class'),
-                      items: classes.map((c) => DropdownMenuItem(value: c.id, child: Text(c.label))).toList(),
+                      items: classes
+                          .map((c) => DropdownMenuItem(
+                              value: c.id, child: Text(c.label)))
+                          .toList(),
                       onChanged: (v) => setState(() {
                         _classId = v;
                         _studentId = null;
@@ -83,21 +94,30 @@ class _TeacherReportCardScreenState extends State<TeacherReportCardScreen> {
                       stream: FirestoreService.collectionStream(
                         'schools/${widget.schoolId}/students',
                         Student.fromMap,
-                        build: (q) => q.where('classId', isEqualTo: _classId).where('status', isEqualTo: 'active'),
+                        build: (q) => q
+                            .where('classId', isEqualTo: _classId)
+                            .where('status', isEqualTo: 'active'),
                       ),
                       builder: (context, studentSnap) {
                         final students = studentSnap.data ?? [];
-                        final selected = _firstWhereOrNull(students, (s) => s.id == _studentId);
+                        final selected = _firstWhereOrNull(
+                            students, (s) => s.id == _studentId);
                         final classLabel =
-                            _firstWhereOrNull(classes, (c) => c.id == _classId)?.label ?? 'Class';
+                            _firstWhereOrNull(classes, (c) => c.id == _classId)
+                                    ?.label ??
+                                'Class';
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             DropdownButtonFormField<String>(
+                              isExpanded: true,
                               initialValue: _studentId,
-                              decoration: const InputDecoration(labelText: 'Student'),
-                              items:
-                                  students.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                              decoration:
+                                  const InputDecoration(labelText: 'Student'),
+                              items: students
+                                  .map((s) => DropdownMenuItem(
+                                      value: s.id, child: Text(s.name)))
+                                  .toList(),
                               onChanged: (v) => setState(() => _studentId = v),
                             ),
                             const SizedBox(height: 8),
@@ -107,15 +127,26 @@ class _TeacherReportCardScreenState extends State<TeacherReportCardScreen> {
                               children: [
                                 if (selected != null)
                                   OutlinedButton.icon(
-                                    onPressed: _exporting ? null : () => _downloadOne(selected),
-                                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                                    label: Text(_exporting ? 'Preparing...' : 'Download PDF'),
+                                    onPressed: _exporting
+                                        ? null
+                                        : () => _downloadOne(selected),
+                                    icon: const Icon(
+                                        Icons.picture_as_pdf_outlined,
+                                        size: 18),
+                                    label: Text(_exporting
+                                        ? 'Preparing...'
+                                        : 'Download PDF'),
                                   ),
                                 FilledButton.icon(
-                                  onPressed:
-                                      _exporting || students.isEmpty ? null : () => _downloadAll(students, classLabel),
-                                  icon: const Icon(Icons.download_outlined, size: 18),
-                                  label: Text(_exporting ? 'Preparing...' : 'Download All Marksheets (PDF)'),
+                                  onPressed: _exporting || students.isEmpty
+                                      ? null
+                                      : () =>
+                                          _downloadAll(students, classLabel),
+                                  icon: const Icon(Icons.download_outlined,
+                                      size: 18),
+                                  label: Text(_exporting
+                                      ? 'Preparing...'
+                                      : 'Download All Marksheets (PDF)'),
                                 ),
                               ],
                             ),
@@ -129,9 +160,12 @@ class _TeacherReportCardScreenState extends State<TeacherReportCardScreen> {
             ),
           ),
           if (_studentId != null)
-            Expanded(child: ReportCardView(schoolId: widget.schoolId, studentId: _studentId!))
+            Expanded(
+                child: ReportCardView(
+                    schoolId: widget.schoolId, studentId: _studentId!))
           else
-            const Expanded(child: Center(child: Text('Choose a class and student.'))),
+            const Expanded(
+                child: Center(child: Text('Choose a class and student.'))),
         ],
       ),
     );

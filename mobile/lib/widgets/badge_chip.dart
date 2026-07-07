@@ -32,10 +32,12 @@ class BadgeChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(color: _bg[variant], borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+          color: _bg[variant], borderRadius: BorderRadius.circular(999)),
       child: Text(
         label,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _fg[variant]),
+        style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w600, color: _fg[variant]),
       ),
     );
   }

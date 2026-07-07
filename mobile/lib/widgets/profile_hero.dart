@@ -60,10 +60,13 @@ class ProfileHero extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: Theme.of(context).textTheme.headlineSmall),
+                      Text(name,
+                          style: Theme.of(context).textTheme.headlineSmall),
                       if (subtitle != null) ...[
                         const SizedBox(height: 2),
-                        Text(subtitle!, style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                        Text(subtitle!,
+                            style: const TextStyle(
+                                color: Colors.black54, fontSize: 13)),
                       ],
                       if (badges != null && badges!.isNotEmpty) ...[
                         const SizedBox(height: 8),

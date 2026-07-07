@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/gold_button.dart';
 
 T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T) test) {
   for (final item in items) {
@@ -42,7 +43,10 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
   List<Subject> _availableSubjects(List<Subject> all) {
     if (_classId == null) return [];
     if (widget.teacher.classTeacherOf == _classId) return all;
-    final ids = widget.teacher.assignments.where((a) => a.classId == _classId).map((a) => a.subjectId).toSet();
+    final ids = widget.teacher.assignments
+        .where((a) => a.classId == _classId)
+        .map((a) => a.subjectId)
+        .toSet();
     return all.where((s) => ids.contains(s.id)).toList();
   }
 
@@ -61,7 +65,9 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
   }
 
   String? get _componentSetId =>
-      (_examId != null && _classId != null && _subjectId != null) ? '${_examId}_${_classId}_$_subjectId' : null;
+      (_examId != null && _classId != null && _subjectId != null)
+          ? '${_examId}_${_classId}_$_subjectId'
+          : null;
 
   // The class teacher of this class already has approval authority, so
   // their own entry doesn't need a separate rubber-stamp; anyone else's
@@ -70,7 +76,9 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
   bool get _isApprover => widget.teacher.classTeacherOf == _classId;
 
   Future<void> _approve(ExamComponentSet cs) async {
-    await FirestoreService.doc('schools/${widget.schoolId}/examComponents/${cs.id}').update({
+    await FirestoreService.doc(
+            'schools/${widget.schoolId}/examComponents/${cs.id}')
+        .update({
       'approved': true,
       'approvedBy': widget.teacher.name,
       'approvedAt': DateTime.now().millisecondsSinceEpoch,
@@ -81,7 +89,8 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
     setState(() {
       _components = [
         ..._components,
-        ExamComponent(id: _newComponentId(), title: '', maxMark: 100, weightage: 0),
+        ExamComponent(
+            id: _newComponentId(), title: '', maxMark: 100, weightage: 0),
       ];
     });
   }
@@ -101,19 +110,23 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
               stream: FirestoreService.collectionStream(
                 'schools/${widget.schoolId}/examComponents',
                 ExamComponentSet.fromMap,
-                build: (q) => q.where('classId', isEqualTo: widget.teacher.classTeacherOf),
+                build: (q) => q.where('classId',
+                    isEqualTo: widget.teacher.classTeacherOf),
               ),
               builder: (context, snap) {
-                final pending =
-                    (snap.data ?? []).where((cs) => !cs.approved && cs.components.isNotEmpty).toList();
+                final pending = (snap.data ?? [])
+                    .where((cs) => !cs.approved && cs.components.isNotEmpty)
+                    .toList();
                 if (pending.isEmpty) return const SizedBox.shrink();
                 return StreamBuilder<List<Exam>>(
-                  stream: FirestoreService.collectionStream('schools/${widget.schoolId}/exams', Exam.fromMap),
+                  stream: FirestoreService.collectionStream(
+                      'schools/${widget.schoolId}/exams', Exam.fromMap),
                   builder: (context, examSnap) {
                     final allExams = examSnap.data ?? [];
                     return StreamBuilder<List<Subject>>(
-                      stream:
-                          FirestoreService.collectionStream('schools/${widget.schoolId}/subjects', Subject.fromMap),
+                      stream: FirestoreService.collectionStream(
+                          'schools/${widget.schoolId}/subjects',
+                          Subject.fromMap),
                       builder: (context, subjSnap) {
                         final allSubjects = subjSnap.data ?? [];
                         return Container(
@@ -128,14 +141,18 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Marks Awaiting Your Approval (${pending.length})',
-                                  style: Theme.of(context).textTheme.titleSmall),
+                              Text(
+                                  'Marks Awaiting Your Approval (${pending.length})',
+                                  style:
+                                      Theme.of(context).textTheme.titleSmall),
                               const SizedBox(height: 8),
                               for (final cs in pending)
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Expanded(
                                         child: Text(
@@ -163,32 +180,44 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: StreamBuilder<List<SchoolClass>>(
-              stream: FirestoreService.collectionStream('schools/${widget.schoolId}/classes', SchoolClass.fromMap),
+              stream: FirestoreService.collectionStream(
+                  'schools/${widget.schoolId}/classes', SchoolClass.fromMap),
               builder: (context, classSnap) {
-                final classes = (classSnap.data ?? []).where((c) => widget.classIds.contains(c.id)).toList();
+                final classes = (classSnap.data ?? [])
+                    .where((c) => widget.classIds.contains(c.id))
+                    .toList();
                 return StreamBuilder<List<Subject>>(
-                  stream: FirestoreService.collectionStream('schools/${widget.schoolId}/subjects', Subject.fromMap),
+                  stream: FirestoreService.collectionStream(
+                      'schools/${widget.schoolId}/subjects', Subject.fromMap),
                   builder: (context, subjSnap) {
                     final subjects = _availableSubjects(subjSnap.data ?? []);
                     return StreamBuilder<List<Exam>>(
-                      stream: FirestoreService.collectionStream('schools/${widget.schoolId}/exams', Exam.fromMap),
+                      stream: FirestoreService.collectionStream(
+                          'schools/${widget.schoolId}/exams', Exam.fromMap),
                       builder: (context, examSnap) {
                         final allExams = examSnap.data ?? [];
                         // Admin schedules by grade (applies to every section
                         // in it), not a specific class.
-                        final myGrade = _firstWhereOrNull(classes, (c) => c.id == _classId)?.grade;
+                        final myGrade =
+                            _firstWhereOrNull(classes, (c) => c.id == _classId)
+                                ?.grade;
                         final availableExams = allExams
                             .where(
-                              (e) => e.schedule.any((s) => s['grade'] == myGrade && s['subjectId'] == _subjectId),
+                              (e) => e.schedule.any((s) =>
+                                  s['grade'] == myGrade &&
+                                  s['subjectId'] == _subjectId),
                             )
                             .toList();
                         return Column(
                           children: [
                             DropdownButtonFormField<String>(
+                              isExpanded: true,
                               value: _classId,
-                              decoration: const InputDecoration(labelText: 'Class'),
+                              decoration:
+                                  const InputDecoration(labelText: 'Class'),
                               items: classes
-                                  .map((c) => DropdownMenuItem(value: c.id, child: Text(c.label)))
+                                  .map((c) => DropdownMenuItem(
+                                      value: c.id, child: Text(c.label)))
                                   .toList(),
                               onChanged: (v) => setState(() {
                                 _classId = v;
@@ -198,10 +227,13 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                             ),
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
+                              isExpanded: true,
                               value: _subjectId,
-                              decoration: const InputDecoration(labelText: 'Subject'),
+                              decoration:
+                                  const InputDecoration(labelText: 'Subject'),
                               items: subjects
-                                  .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name)))
+                                  .map((s) => DropdownMenuItem(
+                                      value: s.id, child: Text(s.name)))
                                   .toList(),
                               onChanged: (v) => setState(() {
                                 _subjectId = v;
@@ -210,10 +242,14 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                             ),
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
+                              isExpanded: true,
                               value: _examId,
-                              decoration: const InputDecoration(labelText: 'Exam'),
+                              decoration:
+                                  const InputDecoration(labelText: 'Exam'),
                               items: availableExams
-                                  .map((e) => DropdownMenuItem(value: e.id, child: Text('${e.name} (${e.term})')))
+                                  .map((e) => DropdownMenuItem(
+                                      value: e.id,
+                                      child: Text('${e.name} (${e.term})')))
                                   .toList(),
                               onChanged: (v) => setState(() => _examId = v),
                             ),
@@ -247,15 +283,20 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                     children: [
                       Row(
                         children: [
-                          Text('Assessment Components', style: Theme.of(context).textTheme.titleMedium),
+                          Text('Assessment Components',
+                              style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(width: 8),
                           if (componentSetSnap.data != null)
                             Text(
-                              approved ? 'Approved by ${approvedBy ?? 'class teacher'}' : 'Pending approval',
+                              approved
+                                  ? 'Approved by ${approvedBy ?? 'class teacher'}'
+                                  : 'Pending approval',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: approved ? Colors.green.shade700 : Colors.amber.shade800,
+                                color: approved
+                                    ? Colors.green.shade700
+                                    : Colors.amber.shade800,
                               ),
                             ),
                         ],
@@ -271,44 +312,51 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                                 flex: 3,
                                 child: TextFormField(
                                   initialValue: _components[i].title,
-                                  decoration: const InputDecoration(labelText: 'Title', isDense: true),
-                                  onChanged: (v) => _components[i] =
-                                      ExamComponent(
-                                        id: _components[i].id,
-                                        title: v,
-                                        maxMark: _components[i].maxMark,
-                                        weightage: _components[i].weightage,
-                                      ),
+                                  decoration: const InputDecoration(
+                                      labelText: 'Title', isDense: true),
+                                  onChanged: (v) =>
+                                      _components[i] = ExamComponent(
+                                    id: _components[i].id,
+                                    title: v,
+                                    maxMark: _components[i].maxMark,
+                                    weightage: _components[i].weightage,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: TextFormField(
-                                  initialValue: _components[i].maxMark.toString(),
-                                  decoration: const InputDecoration(labelText: 'Max', isDense: true),
+                                  initialValue:
+                                      _components[i].maxMark.toString(),
+                                  decoration: const InputDecoration(
+                                      labelText: 'Max', isDense: true),
                                   keyboardType: TextInputType.number,
-                                  onChanged: (v) => _components[i] =
-                                      ExamComponent(
-                                        id: _components[i].id,
-                                        title: _components[i].title,
-                                        maxMark: num.tryParse(v) ?? _components[i].maxMark,
-                                        weightage: _components[i].weightage,
-                                      ),
+                                  onChanged: (v) =>
+                                      _components[i] = ExamComponent(
+                                    id: _components[i].id,
+                                    title: _components[i].title,
+                                    maxMark: num.tryParse(v) ??
+                                        _components[i].maxMark,
+                                    weightage: _components[i].weightage,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: TextFormField(
-                                  initialValue: _components[i].weightage.toString(),
-                                  decoration: const InputDecoration(labelText: 'Weight %', isDense: true),
+                                  initialValue:
+                                      _components[i].weightage.toString(),
+                                  decoration: const InputDecoration(
+                                      labelText: 'Weight %', isDense: true),
                                   keyboardType: TextInputType.number,
-                                  onChanged: (v) => _components[i] =
-                                      ExamComponent(
-                                        id: _components[i].id,
-                                        title: _components[i].title,
-                                        maxMark: _components[i].maxMark,
-                                        weightage: num.tryParse(v) ?? _components[i].weightage,
-                                      ),
+                                  onChanged: (v) =>
+                                      _components[i] = ExamComponent(
+                                    id: _components[i].id,
+                                    title: _components[i].title,
+                                    maxMark: _components[i].maxMark,
+                                    weightage: num.tryParse(v) ??
+                                        _components[i].weightage,
+                                  ),
                                 ),
                               ),
                               IconButton(
@@ -318,16 +366,21 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                             ],
                           ),
                         ),
-                      TextButton(onPressed: _addComponentRow, child: const Text('+ Add component')),
+                      TextButton(
+                          onPressed: _addComponentRow,
+                          child: const Text('+ Add component')),
                       const Divider(height: 32),
                       if (_components.isEmpty)
-                        const Text('Add at least one component above to start entering marks.')
+                        const Text(
+                            'Add at least one component above to start entering marks.')
                       else
                         StreamBuilder<List<Student>>(
                           stream: FirestoreService.collectionStream(
                             'schools/${widget.schoolId}/students',
                             Student.fromMap,
-                            build: (q) => q.where('classId', isEqualTo: _classId).where('status', isEqualTo: 'active'),
+                            build: (q) => q
+                                .where('classId', isEqualTo: _classId)
+                                .where('status', isEqualTo: 'active'),
                           ),
                           builder: (context, studentSnap) {
                             final students = studentSnap.data ?? [];
@@ -335,23 +388,32 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                               stream: FirestoreService.collectionStream(
                                 'schools/${widget.schoolId}/marks',
                                 Marks.fromMap,
-                                build: (q) => q.where('examId', isEqualTo: _examId),
+                                build: (q) =>
+                                    q.where('examId', isEqualTo: _examId),
                               ),
                               builder: (context, marksSnap) {
                                 final marks = marksSnap.data ?? [];
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Marks', style: Theme.of(context).textTheme.titleMedium),
+                                    Text('Marks',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium),
                                     const SizedBox(height: 8),
                                     for (final s in students)
                                       Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
+                                        padding:
+                                            const EdgeInsets.only(bottom: 12),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Text('${s.name}  ·  Roll No. ${s.rollNo}',
-                                                style: Theme.of(context).textTheme.titleSmall),
+                                            Text(
+                                                '${s.name}  ·  Roll No. ${s.rollNo}',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleSmall),
                                             const SizedBox(height: 6),
                                             Wrap(
                                               spacing: 10,
@@ -361,16 +423,25 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                                                   SizedBox(
                                                     width: 110,
                                                     child: TextField(
-                                                      controller: _controllerFor(
+                                                      controller:
+                                                          _controllerFor(
                                                         s.id,
                                                         c.id,
-                                                        _firstWhereOrNull(marks, (m) => m.studentId == s.id)
-                                                            ?.componentMarks[_subjectId]?[c.id],
+                                                        _firstWhereOrNull(
+                                                                    marks,
+                                                                    (m) =>
+                                                                        m.studentId ==
+                                                                        s.id)
+                                                                ?.componentMarks[
+                                                            _subjectId]?[c.id],
                                                       ),
-                                                      keyboardType: TextInputType.number,
-                                                      decoration: InputDecoration(
+                                                      keyboardType:
+                                                          TextInputType.number,
+                                                      decoration:
+                                                          InputDecoration(
                                                         isDense: true,
-                                                        labelText: '${c.title} (/${c.maxMark})',
+                                                        labelText:
+                                                            '${c.title} (/${c.maxMark})',
                                                       ),
                                                     ),
                                                   ),
@@ -380,7 +451,10 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                                             TextField(
                                               controller: _remarkControllerFor(
                                                 s.id,
-                                                _firstWhereOrNull(marks, (m) => m.studentId == s.id)
+                                                _firstWhereOrNull(
+                                                        marks,
+                                                        (m) =>
+                                                            m.studentId == s.id)
                                                     ?.remarks[_subjectId],
                                               ),
                                               decoration: const InputDecoration(
@@ -391,9 +465,13 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
                                           ],
                                         ),
                                       ),
-                                    FilledButton(
-                                      onPressed: _saving ? null : () => _save(students, marks),
-                                      child: Text(_saving ? 'Saving...' : 'Save Components & Marks'),
+                                    GoldButton(
+                                      onPressed: _saving
+                                          ? null
+                                          : () => _save(students, marks),
+                                      child: Text(_saving
+                                          ? 'Saving...'
+                                          : 'Save Components & Marks'),
                                     ),
                                   ],
                                 );
@@ -407,13 +485,16 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
               ),
             )
           else
-            const Expanded(child: Center(child: Text('Choose a class, subject, and exam.'))),
+            const Expanded(
+                child:
+                    Center(child: Text('Choose a class, subject, and exam.'))),
         ],
       ),
     );
   }
 
-  TextEditingController _controllerFor(String studentId, String componentId, num? existingValue) {
+  TextEditingController _controllerFor(
+      String studentId, String componentId, num? existingValue) {
     final key = '$studentId-$componentId';
     final controller = _controllers.putIfAbsent(
       key,
@@ -425,7 +506,8 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
     return controller;
   }
 
-  TextEditingController _remarkControllerFor(String studentId, String? existingValue) {
+  TextEditingController _remarkControllerFor(
+      String studentId, String? existingValue) {
     final key = '$studentId-remark';
     final controller = _controllers.putIfAbsent(
       key,
@@ -448,17 +530,25 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
     if (_examId == null || _subjectId == null || componentSetId == null) return;
     setState(() => _saving = true);
     try {
-      await FirestoreService.doc('schools/${widget.schoolId}/examComponents/$componentSetId').set({
+      await FirestoreService.doc(
+              'schools/${widget.schoolId}/examComponents/$componentSetId')
+          .set({
         'examId': _examId,
         'classId': _classId,
         'subjectId': _subjectId,
         'components': _components
             .where((c) => c.title.isNotEmpty)
-            .map((c) => {'id': c.id, 'title': c.title, 'maxMark': c.maxMark, 'weightage': c.weightage})
+            .map((c) => {
+                  'id': c.id,
+                  'title': c.title,
+                  'maxMark': c.maxMark,
+                  'weightage': c.weightage
+                })
             .toList(),
         'approved': _isApprover,
         'approvedBy': _isApprover ? widget.teacher.name : null,
-        'approvedAt': _isApprover ? DateTime.now().millisecondsSinceEpoch : null,
+        'approvedAt':
+            _isApprover ? DateTime.now().millisecondsSinceEpoch : null,
       });
 
       final batch = FirestoreService.batch();
@@ -475,7 +565,8 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
         final remark = (_controllers['${s.id}-remark']?.text ?? '').trim();
         if (enteredComponentMarks.isEmpty && remark.isEmpty) continue;
 
-        final existing = _firstWhereOrNull(existingMarks, (m) => m.studentId == s.id);
+        final existing =
+            _firstWhereOrNull(existingMarks, (m) => m.studentId == s.id);
         final markId = '${_examId}_${s.id}';
         final updatedComponentMarks = {...existing?.componentMarks ?? {}};
         updatedComponentMarks[_subjectId!] = {
@@ -497,7 +588,8 @@ class _TeacherMarksScreenState extends State<TeacherMarksScreen> {
       }
       await batch.commit();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Components and marks saved.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Components and marks saved.')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

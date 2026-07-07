@@ -49,9 +49,11 @@ class FirestoreService {
     return snap.exists ? fromMap(snap.id, snap.data()!) : null;
   }
 
-  static CollectionReference<Map<String, dynamic>> collection(String path) => _db.collection(path);
+  static CollectionReference<Map<String, dynamic>> collection(String path) =>
+      _db.collection(path);
 
-  static DocumentReference<Map<String, dynamic>> doc(String path) => _db.doc(path);
+  static DocumentReference<Map<String, dynamic>> doc(String path) =>
+      _db.doc(path);
 
   static WriteBatch batch() => _db.batch();
 }

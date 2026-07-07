@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/gold_button.dart';
 
 String _todayIso() => DateTime.now().toIso8601String().substring(0, 10);
 
@@ -17,13 +18,15 @@ const Map<String, String> _statusLabels = {
 };
 
 class TeacherAttendanceScreen extends StatefulWidget {
-  const TeacherAttendanceScreen({super.key, required this.schoolId, required this.classIds});
+  const TeacherAttendanceScreen(
+      {super.key, required this.schoolId, required this.classIds});
 
   final String schoolId;
   final List<String> classIds;
 
   @override
-  State<TeacherAttendanceScreen> createState() => _TeacherAttendanceScreenState();
+  State<TeacherAttendanceScreen> createState() =>
+      _TeacherAttendanceScreenState();
 }
 
 class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
@@ -37,10 +40,12 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Mark Attendance')),
       body: StreamBuilder<List<SchoolClass>>(
-        stream: FirestoreService.collectionStream('schools/${widget.schoolId}/classes', SchoolClass.fromMap),
+        stream: FirestoreService.collectionStream(
+            'schools/${widget.schoolId}/classes', SchoolClass.fromMap),
         builder: (context, classSnap) {
           final allClasses = classSnap.data ?? [];
-          final myClasses = allClasses.where((c) => widget.classIds.contains(c.id)).toList();
+          final myClasses =
+              allClasses.where((c) => widget.classIds.contains(c.id)).toList();
           _classId ??= myClasses.isNotEmpty ? myClasses.first.id : null;
 
           return Column(
@@ -51,10 +56,12 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _classId,
                         decoration: const InputDecoration(labelText: 'Class'),
                         items: myClasses
-                            .map((c) => DropdownMenuItem(value: c.id, child: Text(c.label)))
+                            .map((c) => DropdownMenuItem(
+                                value: c.id, child: Text(c.label)))
                             .toList(),
                         onChanged: (v) => setState(() => _classId = v),
                       ),
@@ -69,7 +76,8 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
                           lastDate: DateTime(2100),
                         );
                         if (picked != null) {
-                          setState(() => _date = picked.toIso8601String().substring(0, 10));
+                          setState(() => _date =
+                              picked.toIso8601String().substring(0, 10));
                         }
                       },
                       child: Text(_date),
@@ -78,14 +86,17 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
                 ),
               ),
               if (_classId == null)
-                const Expanded(child: Center(child: Text('No classes assigned yet.')))
+                const Expanded(
+                    child: Center(child: Text('No classes assigned yet.')))
               else
                 Expanded(
                   child: StreamBuilder<List<Student>>(
                     stream: FirestoreService.collectionStream(
                       'schools/${widget.schoolId}/students',
                       Student.fromMap,
-                      build: (q) => q.where('classId', isEqualTo: _classId).where('status', isEqualTo: 'active'),
+                      build: (q) => q
+                          .where('classId', isEqualTo: _classId)
+                          .where('status', isEqualTo: 'active'),
                     ),
                     builder: (context, studentSnap) {
                       final students = [...(studentSnap.data ?? [])]
@@ -103,7 +114,8 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
                           for (final s in students) {
                             _statuses.putIfAbsent(
                               s.id,
-                              () => records
+                              () =>
+                                  records
                                       .where((r) => r.studentId == s.id)
                                       .map((r) => r.status)
                                       .firstOrNull ??
@@ -120,9 +132,12 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
                                 trailing: DropdownButton<String>(
                                   value: _statuses[s.id] ?? 'present',
                                   items: attendanceStatuses
-                                      .map((v) => DropdownMenuItem(value: v, child: Text(_statusLabels[v]!)))
+                                      .map((v) => DropdownMenuItem(
+                                          value: v,
+                                          child: Text(_statusLabels[v]!)))
                                       .toList(),
-                                  onChanged: (v) => setState(() => _statuses[s.id] = v!),
+                                  onChanged: (v) =>
+                                      setState(() => _statuses[s.id] = v!),
                                 ),
                               );
                             },
@@ -136,8 +151,10 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
                 padding: const EdgeInsets.all(16),
                 child: SizedBox(
                   width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _classId == null || _saving ? null : () => _save(context),
+                  child: GoldButton(
+                    onPressed: _classId == null || _saving
+                        ? null
+                        : () => _save(context),
                     child: Text(_saving ? 'Saving...' : 'Save Attendance'),
                   ),
                 ),
@@ -155,14 +172,16 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
     setState(() => _saving = true);
     try {
       final batch = FirestoreService.batch();
-      final studentsSnap = await FirestoreService.collection('schools/${widget.schoolId}/students')
+      final studentsSnap = await FirestoreService.collection(
+              'schools/${widget.schoolId}/students')
           .where('classId', isEqualTo: _classId)
           .where('status', isEqualTo: 'active')
           .get();
       for (final doc in studentsSnap.docs) {
         final recordId = '${doc.id}_$_date';
         batch.set(
-          FirestoreService.doc('schools/${widget.schoolId}/attendance/$recordId'),
+          FirestoreService.doc(
+              'schools/${widget.schoolId}/attendance/$recordId'),
           {
             'studentId': doc.id,
             'classId': _classId,
@@ -175,7 +194,8 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
       }
       await batch.commit();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attendance saved.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Attendance saved.')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

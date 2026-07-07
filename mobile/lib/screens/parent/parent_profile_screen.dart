@@ -9,7 +9,8 @@ import '../../widgets/profile_hero.dart';
 import 'parent_report_card_screen.dart';
 
 class ParentProfileScreen extends StatelessWidget {
-  const ParentProfileScreen({super.key, required this.schoolId, required this.childId});
+  const ParentProfileScreen(
+      {super.key, required this.schoolId, required this.childId});
 
   final String schoolId;
   final String childId;
@@ -22,14 +23,19 @@ class ParentProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: () => auth.signOut())],
+        actions: [
+          IconButton(
+              icon: const Icon(Icons.logout), onPressed: () => auth.signOut())
+        ],
       ),
       body: StreamBuilder<ParentProfile?>(
-        stream: FirestoreService.docStream('schools/$schoolId/parents/$uid', ParentProfile.fromMap),
+        stream: FirestoreService.docStream(
+            'schools/$schoolId/parents/$uid', ParentProfile.fromMap),
         builder: (context, parentSnap) {
           final parent = parentSnap.data;
           return StreamBuilder<Student?>(
-            stream: FirestoreService.docStream('schools/$schoolId/students/$childId', Student.fromMap),
+            stream: FirestoreService.docStream(
+                'schools/$schoolId/students/$childId', Student.fromMap),
             builder: (context, studentSnap) {
               final student = studentSnap.data;
               return ListView(
@@ -44,7 +50,9 @@ class ParentProfileScreen extends StatelessWidget {
                     badges: [
                       BadgeChip(
                         parent?.status == 'disabled' ? 'Disabled' : 'Active',
-                        variant: parent?.status == 'disabled' ? BadgeVariant.warning : BadgeVariant.success,
+                        variant: parent?.status == 'disabled'
+                            ? BadgeVariant.warning
+                            : BadgeVariant.success,
                       ),
                     ],
                   ),
@@ -55,7 +63,8 @@ class ParentProfileScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Student Details', style: Theme.of(context).textTheme.titleMedium),
+                          Text('Student Details',
+                              style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 8),
                           Text('Name: ${student?.name ?? '—'}'),
                           Text('Admission No.: ${student?.admissionNo ?? '—'}'),
@@ -72,10 +81,13 @@ class ParentProfileScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Emergency & Medical', style: Theme.of(context).textTheme.titleMedium),
+                          Text('Emergency & Medical',
+                              style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 8),
-                          Text('Emergency Contact: ${student?.emergencyContact ?? '—'}'),
-                          Text('Medical Notes: ${student?.medicalNotes ?? '—'}'),
+                          Text(
+                              'Emergency Contact: ${student?.emergencyContact ?? '—'}'),
+                          Text(
+                              'Medical Notes: ${student?.medicalNotes ?? '—'}'),
                         ],
                       ),
                     ),
@@ -89,7 +101,8 @@ class ParentProfileScreen extends StatelessWidget {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ParentReportCardScreen(schoolId: schoolId, childId: childId),
+                          builder: (context) => ParentReportCardScreen(
+                              schoolId: schoolId, childId: childId),
                         ),
                       ),
                     ),

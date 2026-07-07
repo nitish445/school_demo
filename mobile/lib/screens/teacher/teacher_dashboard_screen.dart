@@ -26,7 +26,8 @@ class TeacherDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(teacher.classTeacherOf != null ? 'Class Teacher' : 'Teacher'),
+        title:
+            Text(teacher.classTeacherOf != null ? 'Class Teacher' : 'Teacher'),
         actions: [
           IconButton(
             tooltip: 'Sign out',
@@ -43,21 +44,28 @@ class TeacherDashboardScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Avatar(name: teacher.name, photoUrl: teacher.photoUrl, size: 52),
+                  Avatar(
+                      name: teacher.name, photoUrl: teacher.photoUrl, size: 52),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(teacher.name, style: Theme.of(context).textTheme.titleMedium),
+                        Text(teacher.name,
+                            style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 2),
                         Text(
                           auth.user?.email ?? '',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: outline),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: outline),
                         ),
                         const SizedBox(height: 6),
                         BadgeChip(
-                          teacher.classTeacherOf != null ? 'Class Teacher' : 'Subject Teacher',
+                          teacher.classTeacherOf != null
+                              ? 'Class Teacher'
+                              : 'Subject Teacher',
                           variant: BadgeVariant.brand,
                         ),
                       ],
@@ -78,7 +86,8 @@ class TeacherDashboardScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.school_outlined, size: 18, color: outline),
                       const SizedBox(width: 8),
-                      Text('Your Classes', style: Theme.of(context).textTheme.titleMedium),
+                      Text('Your Classes',
+                          style: Theme.of(context).textTheme.titleMedium),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -89,14 +98,18 @@ class TeacherDashboardScreen extends StatelessWidget {
                     ),
                     builder: (context, snapshot) {
                       final all = snapshot.data ?? [];
-                      final mine = all.where((c) => classIds.contains(c.id)).toList();
+                      final mine =
+                          all.where((c) => classIds.contains(c.id)).toList();
                       if (mine.isEmpty) {
                         return const Text('No classes assigned yet.');
                       }
                       return Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: mine.map((c) => BadgeChip(c.label, variant: BadgeVariant.brand)).toList(),
+                        children: mine
+                            .map((c) =>
+                                BadgeChip(c.label, variant: BadgeVariant.brand))
+                            .toList(),
                       );
                     },
                   ),
@@ -115,7 +128,8 @@ class TeacherDashboardScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.campaign_outlined, size: 18, color: outline),
                       const SizedBox(width: 8),
-                      Text('Latest Announcements', style: Theme.of(context).textTheme.titleMedium),
+                      Text('Latest Announcements',
+                          style: Theme.of(context).textTheme.titleMedium),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -123,11 +137,13 @@ class TeacherDashboardScreen extends StatelessWidget {
                     stream: FirestoreService.collectionStream(
                       'schools/$schoolId/announcements',
                       Announcement.fromMap,
-                      build: (q) => q.orderBy('createdAt', descending: true).limit(5),
+                      build: (q) =>
+                          q.orderBy('createdAt', descending: true).limit(5),
                     ),
                     builder: (context, snapshot) {
                       final items = snapshot.data ?? [];
-                      if (items.isEmpty) return const Text('No announcements yet.');
+                      if (items.isEmpty)
+                        return const Text('No announcements yet.');
                       return Column(
                         children: [
                           for (var i = 0; i < items.length; i++) ...[
@@ -139,7 +155,9 @@ class TeacherDashboardScreen extends StatelessWidget {
                                   margin: const EdgeInsets.only(top: 6),
                                   width: 6,
                                   height: 6,
-                                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFD97706)),
+                                  decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Color(0xFFD97706)),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(child: Text(items[i].title)),

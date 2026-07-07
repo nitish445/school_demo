@@ -1,6 +1,8 @@
 // Mirrors /web/types/models.ts -- kept in sync by hand since the mobile app
 // and web app share the same Firestore schema but not a code generator.
 
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
+
 enum AppRole { admin, classTeacher, subjectTeacher, parent, unknown }
 
 AppRole appRoleFromString(String? value) {
@@ -41,9 +43,10 @@ class School {
       name: map['name'] as String? ?? '',
       address: map['address'] as String?,
       academicYear: map['academicYear'] as String? ?? '',
-      workingDays: ((map['workingDays'] as List<dynamic>?) ?? [1, 2, 3, 4, 5, 6])
-          .map((d) => (d as num).toInt())
-          .toList(),
+      workingDays:
+          ((map['workingDays'] as List<dynamic>?) ?? [1, 2, 3, 4, 5, 6])
+              .map((d) => (d as num).toInt())
+              .toList(),
       holidays: List<String>.from(map['holidays'] as List<dynamic>? ?? []),
     );
   }
@@ -66,6 +69,7 @@ class TeacherAssignment {
 class Teacher {
   final String id;
   final String name;
+  final String? email;
   final String employeeId;
   final List<TeacherAssignment> assignments;
   final List<String> assignedClassIds;
@@ -76,6 +80,7 @@ class Teacher {
   Teacher({
     required this.id,
     required this.name,
+    this.email,
     required this.employeeId,
     required this.assignments,
     required this.assignedClassIds,
@@ -88,13 +93,84 @@ class Teacher {
     return Teacher(
       id: id,
       name: map['name'] as String? ?? '',
+      email: map['email'] as String?,
       employeeId: map['employeeId'] as String? ?? '',
       assignments: ((map['assignments'] as List<dynamic>?) ?? [])
-          .map((a) => TeacherAssignment.fromMap(Map<String, dynamic>.from(a as Map)))
+          .map((a) =>
+              TeacherAssignment.fromMap(Map<String, dynamic>.from(a as Map)))
           .toList(),
-      assignedClassIds: List<String>.from(map['assignedClassIds'] as List<dynamic>? ?? []),
+      assignedClassIds:
+          List<String>.from(map['assignedClassIds'] as List<dynamic>? ?? []),
       classTeacherOf: map['classTeacherOf'] as String?,
       status: map['status'] as String? ?? 'active',
+      photoUrl: map['photoUrl'] as String?,
+    );
+  }
+}
+
+const Map<String, String> adminDesignationLabels = {
+  'principal': 'Principal',
+  'incharge': 'Incharge',
+  'labAssistant': 'Lab Assistant',
+  'teacher': 'Admin',
+};
+
+class Admin {
+  final String id;
+  final String name;
+  final String? email;
+  final String status;
+  final String? designation;
+  final String? photoUrl;
+
+  Admin({
+    required this.id,
+    required this.name,
+    this.email,
+    required this.status,
+    this.designation,
+    this.photoUrl,
+  });
+
+  factory Admin.fromMap(String id, Map<String, dynamic> map) {
+    return Admin(
+      id: id,
+      name: map['name'] as String? ?? '',
+      email: map['email'] as String?,
+      status: map['status'] as String? ?? 'active',
+      designation: map['designation'] as String?,
+      photoUrl: map['photoUrl'] as String?,
+    );
+  }
+}
+
+/// The top-level `users/{uid}` doc -- the canonical display profile shared
+/// across every role. Mirrors /web/types/models.ts `AppUser`; mobile only
+/// needs it for Admin (Teacher/Parent already have richer per-school docs).
+class AppUserProfile {
+  final String uid;
+  final String displayName;
+  final String email;
+  final String status;
+  final String? designation;
+  final String? photoUrl;
+
+  AppUserProfile({
+    required this.uid,
+    required this.displayName,
+    required this.email,
+    required this.status,
+    this.designation,
+    this.photoUrl,
+  });
+
+  factory AppUserProfile.fromMap(String id, Map<String, dynamic> map) {
+    return AppUserProfile(
+      uid: id,
+      displayName: map['displayName'] as String? ?? '',
+      email: map['email'] as String? ?? '',
+      status: map['status'] as String? ?? 'active',
+      designation: map['designation'] as String?,
       photoUrl: map['photoUrl'] as String?,
     );
   }
@@ -103,6 +179,8 @@ class Teacher {
 class ParentProfile {
   final String id;
   final String name;
+  final String? email;
+  final String? phone;
   final List<String> childStudentIds;
   final String status;
   final String? photoUrl;
@@ -110,6 +188,8 @@ class ParentProfile {
   ParentProfile({
     required this.id,
     required this.name,
+    this.email,
+    this.phone,
     required this.childStudentIds,
     required this.status,
     this.photoUrl,
@@ -119,7 +199,10 @@ class ParentProfile {
     return ParentProfile(
       id: id,
       name: map['name'] as String? ?? '',
-      childStudentIds: List<String>.from(map['childStudentIds'] as List<dynamic>? ?? []),
+      email: map['email'] as String?,
+      phone: map['phone'] as String?,
+      childStudentIds:
+          List<String>.from(map['childStudentIds'] as List<dynamic>? ?? []),
       status: map['status'] as String? ?? 'active',
       photoUrl: map['photoUrl'] as String?,
     );
@@ -130,14 +213,24 @@ class SchoolClass {
   final String id;
   final String grade;
   final String section;
+  final String year;
+  final String status;
 
-  SchoolClass({required this.id, required this.grade, required this.section});
+  SchoolClass({
+    required this.id,
+    required this.grade,
+    required this.section,
+    this.year = '',
+    this.status = 'active',
+  });
 
   factory SchoolClass.fromMap(String id, Map<String, dynamic> map) {
     return SchoolClass(
       id: id,
       grade: map['grade'] as String? ?? '',
       section: map['section'] as String? ?? '',
+      year: map['year'] as String? ?? '',
+      status: map['status'] as String? ?? 'active',
     );
   }
 
@@ -148,11 +241,25 @@ class Subject {
   final String id;
   final String name;
   final String code;
+  final String year;
+  final String status;
 
-  Subject({required this.id, required this.name, required this.code});
+  Subject({
+    required this.id,
+    required this.name,
+    required this.code,
+    this.year = '',
+    this.status = 'active',
+  });
 
   factory Subject.fromMap(String id, Map<String, dynamic> map) {
-    return Subject(id: id, name: map['name'] as String? ?? '', code: map['code'] as String? ?? '');
+    return Subject(
+      id: id,
+      name: map['name'] as String? ?? '',
+      code: map['code'] as String? ?? '',
+      year: map['year'] as String? ?? '',
+      status: map['status'] as String? ?? 'active',
+    );
   }
 }
 
@@ -163,6 +270,8 @@ class Student {
   final String rollNo;
   final String classId;
   final String? dob;
+  final String? gender;
+  final String? address;
   final String? emergencyContact;
   final String? medicalNotes;
   final List<String> parentIds;
@@ -175,6 +284,8 @@ class Student {
     required this.rollNo,
     required this.classId,
     this.dob,
+    this.gender,
+    this.address,
     this.emergencyContact,
     this.medicalNotes,
     required this.parentIds,
@@ -189,6 +300,8 @@ class Student {
       rollNo: map['rollNo'] as String? ?? '',
       classId: map['classId'] as String? ?? '',
       dob: map['dob'] as String?,
+      gender: map['gender'] as String?,
+      address: map['address'] as String?,
       emergencyContact: map['emergencyContact'] as String?,
       medicalNotes: map['medicalNotes'] as String?,
       parentIds: List<String>.from(map['parentIds'] as List<dynamic>? ?? []),
@@ -197,7 +310,13 @@ class Student {
   }
 }
 
-const List<String> attendanceStatuses = ['present', 'absent', 'late', 'halfDay', 'medicalLeave'];
+const List<String> attendanceStatuses = [
+  'present',
+  'absent',
+  'late',
+  'halfDay',
+  'medicalLeave'
+];
 
 class AttendanceRecord {
   final String id;
@@ -258,7 +377,8 @@ class Homework {
       dueDate: map['dueDate'] as String? ?? '',
       createdBy: map['createdBy'] as String? ?? '',
       studentIds: List<String>.from(map['studentIds'] as List<dynamic>? ?? []),
-      submissions: Map<String, String>.from(map['submissions'] as Map<dynamic, dynamic>? ?? {}),
+      submissions: Map<String, String>.from(
+          map['submissions'] as Map<dynamic, dynamic>? ?? {}),
     );
   }
 }
@@ -270,7 +390,11 @@ class ExamComponent {
   final num maxMark;
   final num weightage;
 
-  ExamComponent({required this.id, required this.title, required this.maxMark, required this.weightage});
+  ExamComponent(
+      {required this.id,
+      required this.title,
+      required this.maxMark,
+      required this.weightage});
 
   factory ExamComponent.fromMap(Map<String, dynamic> map) {
     return ExamComponent(
@@ -345,7 +469,8 @@ class ExamComponentSet {
       classId: map['classId'] as String? ?? '',
       subjectId: map['subjectId'] as String? ?? '',
       components: ((map['components'] as List<dynamic>?) ?? [])
-          .map((c) => ExamComponent.fromMap(Map<String, dynamic>.from(c as Map)))
+          .map(
+              (c) => ExamComponent.fromMap(Map<String, dynamic>.from(c as Map)))
           .toList(),
       approved: map['approved'] as bool? ?? false,
       approvedBy: map['approvedBy'] as String?,
@@ -379,9 +504,11 @@ class Marks {
       studentId: map['studentId'] as String? ?? '',
       examId: map['examId'] as String? ?? '',
       componentMarks: raw.map(
-        (subjectId, marks) => MapEntry(subjectId as String, Map<String, num>.from(marks as Map)),
+        (subjectId, marks) =>
+            MapEntry(subjectId as String, Map<String, num>.from(marks as Map)),
       ),
-      remarks: rawRemarks.map((subjectId, remark) => MapEntry(subjectId as String, remark as String)),
+      remarks: rawRemarks.map((subjectId, remark) =>
+          MapEntry(subjectId as String, remark as String)),
     );
   }
 }
@@ -440,7 +567,8 @@ class FeeRecord {
   final num totalDue;
   final num totalPaid;
 
-  FeeRecord({required this.id, required this.totalDue, required this.totalPaid});
+  FeeRecord(
+      {required this.id, required this.totalDue, required this.totalPaid});
 
   factory FeeRecord.fromMap(String id, Map<String, dynamic> map) {
     return FeeRecord(
@@ -492,7 +620,8 @@ class Timetable {
       id: id,
       classId: map['classId'] as String? ?? id,
       periods: ((map['periods'] as List<dynamic>?) ?? [])
-          .map((p) => TimetablePeriod.fromMap(Map<String, dynamic>.from(p as Map)))
+          .map((p) =>
+              TimetablePeriod.fromMap(Map<String, dynamic>.from(p as Map)))
           .toList(),
     );
   }
@@ -578,5 +707,38 @@ class CalendarEvent {
   bool touchesDate(String iso) {
     if (endDate == null) return date == iso;
     return date.compareTo(iso) <= 0 && iso.compareTo(endDate!) <= 0;
+  }
+}
+
+class AuditLogEntry {
+  final String id;
+  final String action;
+  final String entity;
+  final String entityLabel;
+  final String actorUid;
+  final String actorEmail;
+  final DateTime? createdAt;
+
+  AuditLogEntry({
+    required this.id,
+    required this.action,
+    required this.entity,
+    required this.entityLabel,
+    required this.actorUid,
+    required this.actorEmail,
+    this.createdAt,
+  });
+
+  factory AuditLogEntry.fromMap(String id, Map<String, dynamic> map) {
+    final timestamp = map['createdAt'];
+    return AuditLogEntry(
+      id: id,
+      action: map['action'] as String? ?? 'update',
+      entity: map['entity'] as String? ?? '',
+      entityLabel: map['entityLabel'] as String? ?? '',
+      actorUid: map['actorUid'] as String? ?? '',
+      actorEmail: map['actorEmail'] as String? ?? '',
+      createdAt: timestamp is Timestamp ? timestamp.toDate() : null,
+    );
   }
 }

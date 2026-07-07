@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
+import '../widgets/gold_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,9 +53,11 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('School Portal', style: Theme.of(context).textTheme.headlineSmall),
+                Text('School Portal',
+                    style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 8),
-                const Text('Sign in with the credentials your school gave you.'),
+                const Text(
+                    'Sign in with the credentials your school gave you.'),
                 const SizedBox(height: 24),
                 TextField(
                   controller: _emailController,
@@ -72,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(_error!, style: const TextStyle(color: Colors.red)),
                 ],
                 const SizedBox(height: 24),
-                FilledButton(
+                GoldButton(
                   onPressed: _submitting ? null : _submit,
                   child: Text(_submitting ? 'Signing in...' : 'Sign in'),
                 ),

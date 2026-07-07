@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 
-const List<String> _dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const List<String> _dayNames = [
+  'Sun',
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat'
+];
 
 T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T) test) {
   for (final item in items) {
@@ -26,6 +34,7 @@ class TimetableView extends StatelessWidget {
   final List<TimetablePeriod> periods;
   final List<int> workingDays;
   final List<Subject> subjects;
+
   /// Needed together with [teachers] to show who teaches each period; omit for merged/personal views.
   final String? classId;
   final List<Teacher> teachers;
@@ -90,7 +99,8 @@ class _DaySchedule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dayPeriods = periods.where((p) => p.day == day).toList()..sort((a, b) => a.period.compareTo(b.period));
+    final dayPeriods = periods.where((p) => p.day == day).toList()
+      ..sort((a, b) => a.period.compareTo(b.period));
     if (dayPeriods.isEmpty) {
       return const Center(child: Text('No periods scheduled.'));
     }
@@ -100,21 +110,32 @@ class _DaySchedule extends StatelessWidget {
       separatorBuilder: (_, index) => const Divider(height: 1),
       itemBuilder: (context, i) {
         final p = dayPeriods[i];
-        final subject = p.subjectId == null ? null : _firstWhereOrNull(subjects, (s) => s.id == p.subjectId);
+        final subject = p.subjectId == null
+            ? null
+            : _firstWhereOrNull(subjects, (s) => s.id == p.subjectId);
         final title = subject?.name ?? p.label ?? '—';
         final teacherName = (classId != null && p.subjectId != null)
             ? _firstWhereOrNull(
                 teachers,
-                (t) => t.assignments.any((a) => a.classId == classId && a.subjectId == p.subjectId),
+                (t) => t.assignments.any(
+                    (a) => a.classId == classId && a.subjectId == p.subjectId),
               )?.name
             : null;
-        final time = (p.startTime != null || p.endTime != null) ? '${p.startTime ?? ''}–${p.endTime ?? ''}' : null;
-        final subtitleParts = [if (teacherName != null) teacherName, if (time != null) time];
+        final time = (p.startTime != null || p.endTime != null)
+            ? '${p.startTime ?? ''}–${p.endTime ?? ''}'
+            : null;
+        final subtitleParts = [
+          if (teacherName != null) teacherName,
+          if (time != null) time
+        ];
         return ListTile(
           dense: true,
-          leading: CircleAvatar(radius: 14, child: Text('${p.period}', style: const TextStyle(fontSize: 12))),
+          leading: CircleAvatar(
+              radius: 14,
+              child: Text('${p.period}', style: const TextStyle(fontSize: 12))),
           title: Text(title),
-          subtitle: subtitleParts.isEmpty ? null : Text(subtitleParts.join(' · ')),
+          subtitle:
+              subtitleParts.isEmpty ? null : Text(subtitleParts.join(' · ')),
         );
       },
     );

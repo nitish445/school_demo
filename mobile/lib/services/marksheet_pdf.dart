@@ -25,18 +25,23 @@ const _muted = PdfColors.grey600;
 /// mirrors the grouping/approval logic in widgets/report_card_view.dart
 /// exactly, so the PDF matches what a parent sees on screen. Used for both
 /// a single student's "Download PDF" and a class teacher's "Download All".
-Future<Uint8List> buildMarksheetsPdf(String schoolId, List<Student> students) async {
-  final school = await FirestoreService.docGet<School>('schools/$schoolId', School.fromMap);
+Future<Uint8List> buildMarksheetsPdf(
+    String schoolId, List<Student> students) async {
+  final school = await FirestoreService.docGet<School>(
+      'schools/$schoolId', School.fromMap);
   final exams = await FirestoreService.collectionGet<Exam>(
     'schools/$schoolId/exams',
     Exam.fromMap,
     build: (q) => q.where('published', isEqualTo: true),
   );
-  final subjects = await FirestoreService.collectionGet<Subject>('schools/$schoolId/subjects', Subject.fromMap);
-  final classes = await FirestoreService.collectionGet<SchoolClass>('schools/$schoolId/classes', SchoolClass.fromMap);
-  final teachers = await FirestoreService.collectionGet<Teacher>('schools/$schoolId/teachers', Teacher.fromMap);
-  final componentSets =
-      await FirestoreService.collectionGet<ExamComponentSet>('schools/$schoolId/examComponents', ExamComponentSet.fromMap);
+  final subjects = await FirestoreService.collectionGet<Subject>(
+      'schools/$schoolId/subjects', Subject.fromMap);
+  final classes = await FirestoreService.collectionGet<SchoolClass>(
+      'schools/$schoolId/classes', SchoolClass.fromMap);
+  final teachers = await FirestoreService.collectionGet<Teacher>(
+      'schools/$schoolId/teachers', Teacher.fromMap);
+  final componentSets = await FirestoreService.collectionGet<ExamComponentSet>(
+      'schools/$schoolId/examComponents', ExamComponentSet.fromMap);
 
   final doc = pw.Document();
 
@@ -46,9 +51,11 @@ Future<Uint8List> buildMarksheetsPdf(String schoolId, List<Student> students) as
       Marks.fromMap,
       build: (q) => q.where('studentId', isEqualTo: student.id),
     );
-    final classLabel = _firstWhereOrNull(classes, (c) => c.id == student.classId);
+    final classLabel =
+        _firstWhereOrNull(classes, (c) => c.id == student.classId);
 
-    final allResults = computeAllSubjectResults(exams, marks, componentSets, student.classId, classLabel?.grade);
+    final allResults = computeAllSubjectResults(
+        exams, marks, componentSets, student.classId, classLabel?.grade);
     final summary = computeOverallSummary(allResults);
 
     // Group by subject (approved only), same rule as the parent-facing
@@ -65,10 +72,15 @@ Future<Uint8List> buildMarksheetsPdf(String schoolId, List<Student> students) as
         final subjectId = entry['subjectId'] as String? ?? '';
         final cs = _firstWhereOrNull(
           componentSets,
-          (c) => c.examId == exam.id && c.classId == student.classId && c.subjectId == subjectId,
+          (c) =>
+              c.examId == exam.id &&
+              c.classId == student.classId &&
+              c.subjectId == subjectId,
         );
         final record = _firstWhereOrNull(marks, (m) => m.examId == exam.id);
-        final hasMarks = cs != null && cs.components.any((c) => record?.componentMarks[subjectId]?[c.id] != null);
+        final hasMarks = cs != null &&
+            cs.components
+                .any((c) => record?.componentMarks[subjectId]?[c.id] != null);
         if (!hasMarks) continue;
         if (!cs.approved) {
           if (!pendingExamsBySubject.containsKey(subjectId)) {
@@ -124,7 +136,8 @@ Future<Uint8List> buildMarksheetsPdf(String schoolId, List<Student> students) as
       final subject = _firstWhereOrNull(subjects, (s) => s.id == subjectId);
       final teacher = _firstWhereOrNull(
         teachers,
-        (t) => t.assignments.any((a) => a.classId == student.classId && a.subjectId == subjectId),
+        (t) => t.assignments.any(
+            (a) => a.classId == student.classId && a.subjectId == subjectId),
       );
       content.addAll(
         _buildSubjectSection(
@@ -141,7 +154,8 @@ Future<Uint8List> buildMarksheetsPdf(String schoolId, List<Student> students) as
     }
 
     if (subjectIds.isEmpty && pendingSubjectIds.isEmpty) {
-      content.add(const pw.Text('No published results yet.', style: pw.TextStyle(fontSize: 10)));
+      content.add(pw.Text('No published results yet.',
+          style: pw.TextStyle(fontSize: 10)));
     }
 
     doc.addPage(
@@ -162,16 +176,19 @@ List<pw.Widget> _buildLetterhead(School? school) {
     pw.Center(
       child: pw.Text(
         school?.name ?? 'School',
-        style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: _accentDark),
+        style: pw.TextStyle(
+            fontSize: 18, fontWeight: pw.FontWeight.bold, color: _accentDark),
       ),
     ),
     if (school?.address != null || (school?.academicYear ?? '').isNotEmpty) ...[
       pw.SizedBox(height: 3),
       pw.Center(
         child: pw.Text(
-          [school?.address, if ((school?.academicYear ?? '').isNotEmpty) 'Academic Year ${school!.academicYear}']
-              .where((s) => s != null && s.isNotEmpty)
-              .join('   ·   '),
+          [
+            school?.address,
+            if ((school?.academicYear ?? '').isNotEmpty)
+              'Academic Year ${school!.academicYear}'
+          ].where((s) => s != null && s.isNotEmpty).join('   ·   '),
           style: const pw.TextStyle(fontSize: 9, color: _muted),
         ),
       ),
@@ -182,7 +199,11 @@ List<pw.Widget> _buildLetterhead(School? school) {
     pw.Center(
       child: pw.Text(
         'ACADEMIC REPORT CARD',
-        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: _accent, letterSpacing: 1.2),
+        style: pw.TextStyle(
+            fontSize: 13,
+            fontWeight: pw.FontWeight.bold,
+            color: _accent,
+            letterSpacing: 1.2),
       ),
     ),
     pw.SizedBox(height: 3),
@@ -198,7 +219,9 @@ pw.Widget _buildStudentInfo(Student student, SchoolClass? classLabel) {
       color: isLabel ? _accentLight : null,
       child: pw.Text(
         text,
-        style: pw.TextStyle(fontSize: 9, fontWeight: isLabel ? pw.FontWeight.bold : pw.FontWeight.normal),
+        style: pw.TextStyle(
+            fontSize: 9,
+            fontWeight: isLabel ? pw.FontWeight.bold : pw.FontWeight.normal),
       ),
     );
   }
@@ -233,13 +256,19 @@ pw.Widget _buildSummaryTiles(double averagePercentage, String overallGrade) {
     return pw.Expanded(
       child: pw.Container(
         padding: const pw.EdgeInsets.all(10),
-        decoration: pw.BoxDecoration(color: _accentLight, borderRadius: pw.BorderRadius.circular(4)),
+        decoration: pw.BoxDecoration(
+            color: _accentLight, borderRadius: pw.BorderRadius.circular(4)),
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text(label, style: const pw.TextStyle(fontSize: 7.5, color: _muted)),
+            pw.Text(label,
+                style: const pw.TextStyle(fontSize: 7.5, color: _muted)),
             pw.SizedBox(height: 3),
-            pw.Text(value, style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: _accentDark)),
+            pw.Text(value,
+                style: pw.TextStyle(
+                    fontSize: 15,
+                    fontWeight: pw.FontWeight.bold,
+                    color: _accentDark)),
           ],
         ),
       ),
@@ -269,7 +298,8 @@ pw.Widget _buildFooter(pw.Context context) {
               children: [
                 pw.Container(width: 130, height: 0.6, color: PdfColors.grey400),
                 pw.SizedBox(height: 3),
-                pw.Text("Class Teacher's Signature", style: const pw.TextStyle(fontSize: 8, color: _muted)),
+                pw.Text("Class Teacher's Signature",
+                    style: const pw.TextStyle(fontSize: 8, color: _muted)),
               ],
             ),
             pw.Column(
@@ -277,7 +307,8 @@ pw.Widget _buildFooter(pw.Context context) {
               children: [
                 pw.Container(width: 130, height: 0.6, color: PdfColors.grey400),
                 pw.SizedBox(height: 3),
-                pw.Text("Principal's Signature", style: const pw.TextStyle(fontSize: 8, color: _muted)),
+                pw.Text("Principal's Signature",
+                    style: const pw.TextStyle(fontSize: 8, color: _muted)),
               ],
             ),
           ],
@@ -307,16 +338,24 @@ List<pw.Widget> _buildSubjectSection({
 }) {
   final rows = <List<String>>[];
   var serial = 0;
-  var combinedMax = 0.0, combinedWeightage = 0.0, combinedScored = 0.0, combinedWeightageMark = 0.0, combinedLost = 0.0;
+  var combinedMax = 0.0,
+      combinedWeightage = 0.0,
+      combinedScored = 0.0,
+      combinedWeightageMark = 0.0,
+      combinedLost = 0.0;
 
   for (final exam in approvedExams) {
     final cs = _firstWhereOrNull(
       componentSets,
-      (c) => c.examId == exam.id && c.classId == studentClassId && c.subjectId == subjectId,
+      (c) =>
+          c.examId == exam.id &&
+          c.classId == studentClassId &&
+          c.subjectId == subjectId,
     );
     if (cs == null || cs.components.isEmpty) continue;
     final record = _firstWhereOrNull(marks, (m) => m.examId == exam.id);
-    final result = computeSubjectResult(subjectId, cs.components, record?.componentMarks[subjectId]);
+    final result = computeSubjectResult(
+        subjectId, cs.components, record?.componentMarks[subjectId]);
     if (!result.components.any((c) => c.present)) continue;
 
     combinedMax += result.totalMax;
@@ -345,7 +384,9 @@ List<pw.Widget> _buildSubjectSection({
 
   if (rows.isEmpty) return [];
 
-  final combinedPercentage = combinedWeightage > 0 ? (combinedWeightageMark / combinedWeightage) * 100 : 0.0;
+  final combinedPercentage = combinedWeightage > 0
+      ? (combinedWeightageMark / combinedWeightage) * 100
+      : 0.0;
   final combinedGrade = gradeForPercentage(combinedPercentage);
 
   return [
@@ -356,19 +397,37 @@ List<pw.Widget> _buildSubjectSection({
       child: pw.Wrap(
         spacing: 10,
         children: [
-          pw.Text(subject?.code ?? subjectId, style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
+          pw.Text(subject?.code ?? subjectId,
+              style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
           pw.Text(subject?.name ?? '-',
-              style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+              style: pw.TextStyle(
+                  color: PdfColors.white,
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold)),
           if (classLabel != null)
-            pw.Text(classLabel.label, style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
-          if (teacher != null) pw.Text(teacher.name, style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
+            pw.Text(classLabel.label,
+                style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
+          if (teacher != null)
+            pw.Text(teacher.name,
+                style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
         ],
       ),
     ),
     pw.Table.fromTextArray(
-      headers: ['Sl.No', 'Exam', 'Mark Title', 'Max', 'Wt %', 'Status', 'Scored', 'Wt Mark', 'Remark'],
+      headers: [
+        'Sl.No',
+        'Exam',
+        'Mark Title',
+        'Max',
+        'Wt %',
+        'Status',
+        'Scored',
+        'Wt Mark',
+        'Remark'
+      ],
       data: rows,
-      headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: _accentDark),
+      headerStyle: pw.TextStyle(
+          fontSize: 8, fontWeight: pw.FontWeight.bold, color: _accentDark),
       cellStyle: const pw.TextStyle(fontSize: 8),
       headerDecoration: const pw.BoxDecoration(color: _accentLight),
       cellAlignment: pw.Alignment.centerLeft,
@@ -385,10 +444,16 @@ List<pw.Widget> _buildSubjectSection({
             'Total: ${combinedScored.toStringAsFixed(2)} / ${combinedMax.toStringAsFixed(2)} '
             '(${combinedWeightageMark.toStringAsFixed(2)} / ${combinedWeightage.toStringAsFixed(2)}) '
             '-- Lost ${combinedLost.toStringAsFixed(2)}',
-            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _accentDark),
+            style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                color: _accentDark),
           ),
           pw.Text('Grade: $combinedGrade',
-              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _accentDark)),
+              style: pw.TextStyle(
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold,
+                  color: _accentDark)),
         ],
       ),
     ),

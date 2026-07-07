@@ -4,7 +4,8 @@ import '../../models/models.dart';
 import '../../services/firestore_service.dart';
 
 class ParentHomeworkScreen extends StatelessWidget {
-  const ParentHomeworkScreen({super.key, required this.schoolId, required this.childId});
+  const ParentHomeworkScreen(
+      {super.key, required this.schoolId, required this.childId});
 
   final String schoolId;
   final String childId;
@@ -14,7 +15,8 @@ class ParentHomeworkScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Homework')),
       body: StreamBuilder<List<Subject>>(
-        stream: FirestoreService.collectionStream('schools/$schoolId/subjects', Subject.fromMap),
+        stream: FirestoreService.collectionStream(
+            'schools/$schoolId/subjects', Subject.fromMap),
         builder: (context, subjectSnap) {
           final subjects = subjectSnap.data ?? [];
           return StreamBuilder<List<Homework>>(
@@ -24,7 +26,8 @@ class ParentHomeworkScreen extends StatelessWidget {
               build: (q) => q.where('studentIds', arrayContains: childId),
             ),
             builder: (context, hwSnap) {
-              final items = [...(hwSnap.data ?? [])]..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+              final items = [...(hwSnap.data ?? [])]
+                ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
               if (items.isEmpty) {
                 return const Center(child: Text('No homework assigned yet.'));
               }
@@ -32,17 +35,23 @@ class ParentHomeworkScreen extends StatelessWidget {
                 itemCount: items.length,
                 itemBuilder: (context, i) {
                   final h = items[i];
-                  final subjectName =
-                      subjects.where((s) => s.id == h.subjectId).map((s) => s.name).firstOrNull ?? '';
+                  final subjectName = subjects
+                          .where((s) => s.id == h.subjectId)
+                          .map((s) => s.name)
+                          .firstOrNull ??
+                      '';
                   final completed = h.submissions[childId] == 'completed';
                   return ListTile(
                     title: Text(h.title),
-                    subtitle: Text('$subjectName · Due ${h.dueDate}\n${h.description}'),
+                    subtitle: Text(
+                        '$subjectName · Due ${h.dueDate}\n${h.description}'),
                     isThreeLine: true,
                     trailing: completed
                         ? const Icon(Icons.check_circle, color: Colors.green)
                         : TextButton(
-                            onPressed: () => FirestoreService.doc('schools/$schoolId/homework/${h.id}').update({
+                            onPressed: () => FirestoreService.doc(
+                                    'schools/$schoolId/homework/${h.id}')
+                                .update({
                               'submissions.$childId': 'completed',
                             }),
                             child: const Text('Mark Done'),

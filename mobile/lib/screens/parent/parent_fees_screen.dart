@@ -4,7 +4,8 @@ import '../../models/models.dart';
 import '../../services/firestore_service.dart';
 
 class ParentFeesScreen extends StatelessWidget {
-  const ParentFeesScreen({super.key, required this.schoolId, required this.childId});
+  const ParentFeesScreen(
+      {super.key, required this.schoolId, required this.childId});
 
   final String schoolId;
   final String childId;
@@ -14,7 +15,8 @@ class ParentFeesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Fees')),
       body: StreamBuilder<FeeRecord?>(
-        stream: FirestoreService.docStream('schools/$schoolId/fees/$childId', FeeRecord.fromMap),
+        stream: FirestoreService.docStream(
+            'schools/$schoolId/fees/$childId', FeeRecord.fromMap),
         builder: (context, feeSnap) {
           final fee = feeSnap.data;
           final totalDue = fee?.totalDue ?? 0;
@@ -26,7 +28,8 @@ class ParentFeesScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Expanded(child: _FeeStat(label: 'Total Due', value: totalDue)),
+                  Expanded(
+                      child: _FeeStat(label: 'Total Due', value: totalDue)),
                   const SizedBox(width: 12),
                   Expanded(child: _FeeStat(label: 'Paid', value: totalPaid)),
                   const SizedBox(width: 12),
@@ -43,7 +46,8 @@ class ParentFeesScreen extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 8),
-              Text('Payment History', style: Theme.of(context).textTheme.titleMedium),
+              Text('Payment History',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               StreamBuilder<List<FeePayment>>(
                 stream: FirestoreService.collectionStream(
@@ -52,12 +56,14 @@ class ParentFeesScreen extends StatelessWidget {
                 ),
                 builder: (context, snap) {
                   final payments = snap.data ?? [];
-                  if (payments.isEmpty) return const Text('No payments recorded yet.');
+                  if (payments.isEmpty)
+                    return const Text('No payments recorded yet.');
                   return Column(
                     children: payments
                         .map((p) => ListTile(
                               title: Text('₹${p.amount}'),
-                              subtitle: Text('${p.date} · ${p.mode} · ${p.receiptNo}'),
+                              subtitle: Text(
+                                  '${p.date} · ${p.mode} · ${p.receiptNo}'),
                             ))
                         .toList(),
                   );
@@ -86,7 +92,8 @@ class _FeeStat extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label, style: Theme.of(context).textTheme.bodySmall),
-            Text('₹${value.toStringAsFixed(0)}', style: Theme.of(context).textTheme.titleMedium),
+            Text('₹${value.toStringAsFixed(0)}',
+                style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
       ),

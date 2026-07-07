@@ -41,7 +41,8 @@ class _ProfilePictureEditorState extends State<ProfilePictureEditor> {
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('Choose from gallery'),
               onTap: () async {
-                final file = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+                final file = await ImagePicker()
+                    .pickImage(source: ImageSource.gallery, imageQuality: 85);
                 if (context.mounted) Navigator.pop(context, file);
               },
             ),
@@ -49,7 +50,8 @@ class _ProfilePictureEditorState extends State<ProfilePictureEditor> {
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('Take a photo'),
               onTap: () async {
-                final file = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 85);
+                final file = await ImagePicker()
+                    .pickImage(source: ImageSource.camera, imageQuality: 85);
                 if (context.mounted) Navigator.pop(context, file);
               },
             ),
@@ -73,7 +75,9 @@ class _ProfilePictureEditorState extends State<ProfilePictureEditor> {
     try {
       await updateProfilePicture(widget.uid, file, widget.extraDocPaths);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not upload the picture. Please try again.');
+      if (mounted)
+        setState(
+            () => _error = 'Could not upload the picture. Please try again.');
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -90,9 +94,11 @@ class _ProfilePictureEditorState extends State<ProfilePictureEditor> {
             Container(
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 4)),
+                border: Border.fromBorderSide(
+                    BorderSide(color: Colors.white, width: 4)),
               ),
-              child: Avatar(name: widget.name, photoUrl: widget.photoUrl, size: 76),
+              child: Avatar(
+                  name: widget.name, photoUrl: widget.photoUrl, size: 76),
             ),
             Positioned(
               right: 0,
@@ -107,7 +113,8 @@ class _ProfilePictureEditorState extends State<ProfilePictureEditor> {
                     color: _uploading ? Colors.black45 : Colors.black87,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                  child: const Icon(Icons.camera_alt,
+                      size: 14, color: Colors.white),
                 ),
               ),
             ),
@@ -116,12 +123,14 @@ class _ProfilePictureEditorState extends State<ProfilePictureEditor> {
         if (_uploading)
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Uploading...', style: TextStyle(fontSize: 12, color: Colors.black54)),
+            child: Text('Uploading...',
+                style: TextStyle(fontSize: 12, color: Colors.black54)),
           ),
         if (_error != null)
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text(_error!, style: const TextStyle(fontSize: 12, color: Colors.redAccent)),
+            child: Text(_error!,
+                style: const TextStyle(fontSize: 12, color: Colors.redAccent)),
           ),
       ],
     );

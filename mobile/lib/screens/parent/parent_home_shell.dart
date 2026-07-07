@@ -41,22 +41,29 @@ class _ParentHomeShellState extends State<ParentHomeShell> {
     }
 
     return StreamBuilder<ParentProfile?>(
-      stream: FirestoreService.docStream('schools/$schoolId/parents/$uid', ParentProfile.fromMap),
+      stream: FirestoreService.docStream(
+          'schools/$schoolId/parents/$uid', ParentProfile.fromMap),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
         final parent = snapshot.data;
         if (parent == null || parent.childStudentIds.isEmpty) {
           return Scaffold(
             appBar: AppBar(
               title: const Text('School Portal'),
-              actions: [IconButton(icon: const Icon(Icons.logout), onPressed: () => auth.signOut())],
+              actions: [
+                IconButton(
+                    icon: const Icon(Icons.logout),
+                    onPressed: () => auth.signOut())
+              ],
             ),
             body: const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('No children are linked to your account yet. Contact the school admin.'),
+                child: Text(
+                    'No children are linked to your account yet. Contact the school admin.'),
               ),
             ),
           );
@@ -78,16 +85,22 @@ class _ParentHomeShellState extends State<ParentHomeShell> {
           appBar: parent.childStudentIds.length > 1
               ? AppBar(
                   title: StreamBuilder<List<Student>>(
-                    stream: FirestoreService.collectionStream('schools/$schoolId/students', Student.fromMap),
+                    stream: FirestoreService.collectionStream(
+                        'schools/$schoolId/students', Student.fromMap),
                     builder: (context, studentSnap) {
                       final students = studentSnap.data ?? [];
                       String labelFor(String id) =>
-                          students.where((s) => s.id == id).map((s) => s.name).firstOrNull ?? id;
+                          students
+                              .where((s) => s.id == id)
+                              .map((s) => s.name)
+                              .firstOrNull ??
+                          id;
                       return DropdownButton<String>(
                         value: childId,
                         dropdownColor: Theme.of(context).colorScheme.surface,
                         items: parent.childStudentIds
-                            .map((id) => DropdownMenuItem(value: id, child: Text(labelFor(id))))
+                            .map((id) => DropdownMenuItem(
+                                value: id, child: Text(labelFor(id))))
                             .toList(),
                         onChanged: (v) => setState(() => _selectedChildId = v),
                       );
@@ -100,13 +113,20 @@ class _ParentHomeShellState extends State<ParentHomeShell> {
             selectedIndex: _tab,
             onDestinationSelected: (i) => setState(() => _tab = i),
             destinations: const [
-              NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-              NavigationDestination(icon: Icon(Icons.checklist_outlined), label: 'Attendance'),
-              NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Homework'),
-              NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'Fees'),
-              NavigationDestination(icon: Icon(Icons.schedule_outlined), label: 'Timetable'),
-              NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
-              NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+              NavigationDestination(
+                  icon: Icon(Icons.home_outlined), label: 'Home'),
+              NavigationDestination(
+                  icon: Icon(Icons.checklist_outlined), label: 'Attendance'),
+              NavigationDestination(
+                  icon: Icon(Icons.menu_book_outlined), label: 'Homework'),
+              NavigationDestination(
+                  icon: Icon(Icons.payments_outlined), label: 'Fees'),
+              NavigationDestination(
+                  icon: Icon(Icons.schedule_outlined), label: 'Timetable'),
+              NavigationDestination(
+                  icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
+              NavigationDestination(
+                  icon: Icon(Icons.person_outline), label: 'Profile'),
             ],
           ),
         );

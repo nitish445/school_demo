@@ -26,7 +26,8 @@ class TeacherCalendarScreen extends StatelessWidget {
 
   final String schoolId;
 
-  void _showDay(BuildContext context, String dateIso, List<CalendarEvent> events) {
+  void _showDay(
+      BuildContext context, String dateIso, List<CalendarEvent> events) {
     final dayEvents = events.where((e) => e.touchesDate(dateIso)).toList();
     showModalBottomSheet(
       context: context,
@@ -50,12 +51,15 @@ class TeacherCalendarScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(e.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text(e.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
                             if (e.description != null) Text(e.description!),
                           ],
                         ),
                       ),
-                      BadgeChip(_typeLabel[e.type]!, variant: _typeVariant[e.type]!),
+                      BadgeChip(_typeLabel[e.type]!,
+                          variant: _typeVariant[e.type]!),
                     ],
                   ),
                 ),
@@ -75,7 +79,8 @@ class TeacherCalendarScreen extends StatelessWidget {
         builder: (context, schoolSnap) {
           final holidays = schoolSnap.data?.holidays ?? const [];
           return StreamBuilder<List<CalendarEvent>>(
-            stream: FirestoreService.collectionStream('schools/$schoolId/events', CalendarEvent.fromMap),
+            stream: FirestoreService.collectionStream(
+                'schools/$schoolId/events', CalendarEvent.fromMap),
             builder: (context, snap) {
               final events = snap.data ?? [];
               return Padding(

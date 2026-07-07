@@ -6,7 +6,8 @@ import '../../services/firestore_service.dart';
 String _currentMonth() => DateTime.now().toIso8601String().substring(0, 7);
 
 class ParentAttendanceScreen extends StatefulWidget {
-  const ParentAttendanceScreen({super.key, required this.schoolId, required this.childId});
+  const ParentAttendanceScreen(
+      {super.key, required this.schoolId, required this.childId});
 
   final String schoolId;
   final String childId;
@@ -35,9 +36,13 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
               .where('date', isLessThanOrEqualTo: monthEnd),
         ),
         builder: (context, snapshot) {
-          final records = [...(snapshot.data ?? [])]..sort((a, b) => a.date.compareTo(b.date));
-          final present = records.where((r) => r.status == 'present' || r.status == 'late').length;
-          final pct = records.isEmpty ? null : (present / records.length * 100).round();
+          final records = [...(snapshot.data ?? [])]
+            ..sort((a, b) => a.date.compareTo(b.date));
+          final present = records
+              .where((r) => r.status == 'present' || r.status == 'late')
+              .length;
+          final pct =
+              records.isEmpty ? null : (present / records.length * 100).round();
 
           return Column(
             children: [
@@ -48,15 +53,20 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
                     TextButton(
                       onPressed: () => setState(() {
                         final d = DateTime.parse('$_month-01');
-                        _month = DateTime(d.year, d.month - 1).toIso8601String().substring(0, 7);
+                        _month = DateTime(d.year, d.month - 1)
+                            .toIso8601String()
+                            .substring(0, 7);
                       }),
                       child: const Icon(Icons.chevron_left),
                     ),
-                    Text(_month, style: Theme.of(context).textTheme.titleMedium),
+                    Text(_month,
+                        style: Theme.of(context).textTheme.titleMedium),
                     TextButton(
                       onPressed: () => setState(() {
                         final d = DateTime.parse('$_month-01');
-                        _month = DateTime(d.year, d.month + 1).toIso8601String().substring(0, 7);
+                        _month = DateTime(d.year, d.month + 1)
+                            .toIso8601String()
+                            .substring(0, 7);
                       }),
                       child: const Icon(Icons.chevron_right),
                     ),
@@ -67,12 +77,14 @@ class _ParentAttendanceScreenState extends State<ParentAttendanceScreen> {
               ),
               Expanded(
                 child: records.isEmpty
-                    ? const Center(child: Text('No attendance marked this month.'))
+                    ? const Center(
+                        child: Text('No attendance marked this month.'))
                     : ListView.builder(
                         itemCount: records.length,
                         itemBuilder: (context, i) {
                           final r = records[i];
-                          return ListTile(title: Text(r.date), trailing: Text(r.status));
+                          return ListTile(
+                              title: Text(r.date), trailing: Text(r.status));
                         },
                       ),
               ),

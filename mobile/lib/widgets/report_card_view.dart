@@ -16,7 +16,8 @@ T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T) test) {
 /// web/components/ReportCard.tsx). Components come from the subject
 /// teacher's own `examComponents` docs, not from the admin-owned Exam.
 class ReportCardView extends StatelessWidget {
-  const ReportCardView({super.key, required this.schoolId, required this.studentId});
+  const ReportCardView(
+      {super.key, required this.schoolId, required this.studentId});
 
   final String schoolId;
   final String studentId;
@@ -32,15 +33,18 @@ class ReportCardView extends StatelessWidget {
       builder: (context, examsSnap) {
         final exams = examsSnap.data ?? [];
         return StreamBuilder<List<Subject>>(
-          stream: FirestoreService.collectionStream('schools/$schoolId/subjects', Subject.fromMap),
+          stream: FirestoreService.collectionStream(
+              'schools/$schoolId/subjects', Subject.fromMap),
           builder: (context, subjectsSnap) {
             final subjects = subjectsSnap.data ?? [];
             return StreamBuilder<List<SchoolClass>>(
-              stream: FirestoreService.collectionStream('schools/$schoolId/classes', SchoolClass.fromMap),
+              stream: FirestoreService.collectionStream(
+                  'schools/$schoolId/classes', SchoolClass.fromMap),
               builder: (context, classesSnap) {
                 final classes = classesSnap.data ?? [];
                 return StreamBuilder<List<Teacher>>(
-                  stream: FirestoreService.collectionStream('schools/$schoolId/teachers', Teacher.fromMap),
+                  stream: FirestoreService.collectionStream(
+                      'schools/$schoolId/teachers', Teacher.fromMap),
                   builder: (context, teachersSnap) {
                     final teachers = teachersSnap.data ?? [];
                     return StreamBuilder<List<ExamComponentSet>>(
@@ -51,15 +55,17 @@ class ReportCardView extends StatelessWidget {
                       builder: (context, componentSetsSnap) {
                         final componentSets = componentSetsSnap.data ?? [];
                         return StreamBuilder<Student?>(
-                          stream:
-                              FirestoreService.docStream('schools/$schoolId/students/$studentId', Student.fromMap),
+                          stream: FirestoreService.docStream(
+                              'schools/$schoolId/students/$studentId',
+                              Student.fromMap),
                           builder: (context, studentSnap) {
                             final student = studentSnap.data;
                             return StreamBuilder<List<Marks>>(
                               stream: FirestoreService.collectionStream(
                                 'schools/$schoolId/marks',
                                 Marks.fromMap,
-                                build: (q) => q.where('studentId', isEqualTo: studentId),
+                                build: (q) =>
+                                    q.where('studentId', isEqualTo: studentId),
                               ),
                               builder: (context, marksSnap) {
                                 final marks = marksSnap.data ?? [];
@@ -71,7 +77,8 @@ class ReportCardView extends StatelessWidget {
                                   );
                                 }
 
-                                final classLabel = _firstWhereOrNull(classes, (c) => c.id == student?.classId);
+                                final classLabel = _firstWhereOrNull(
+                                    classes, (c) => c.id == student?.classId);
                                 final allResults = computeAllSubjectResults(
                                   exams,
                                   marks,
@@ -79,7 +86,8 @@ class ReportCardView extends StatelessWidget {
                                   student?.classId,
                                   classLabel?.grade,
                                 );
-                                final summary = computeOverallSummary(allResults);
+                                final summary =
+                                    computeOverallSummary(allResults);
 
                                 // Group by subject first, then by exam within it, so the
                                 // same subject (e.g. Mathematics) isn't re-introduced from
@@ -90,29 +98,41 @@ class ReportCardView extends StatelessWidget {
                                 final subjectIds = <String>[];
                                 final examsBySubject = <String, List<Exam>>{};
                                 final pendingSubjectIds = <String>[];
-                                final pendingExamsBySubject = <String, List<Exam>>{};
+                                final pendingExamsBySubject =
+                                    <String, List<Exam>>{};
                                 for (final exam in exams) {
                                   for (final entry in exam.schedule) {
-                                    if (entry['grade'] != classLabel?.grade) continue;
-                                    final subjectId = entry['subjectId'] as String? ?? '';
+                                    if (entry['grade'] != classLabel?.grade)
+                                      continue;
+                                    final subjectId =
+                                        entry['subjectId'] as String? ?? '';
                                     final cs = _firstWhereOrNull(
                                       componentSets,
                                       (c) =>
-                                          c.examId == exam.id && c.classId == student?.classId && c.subjectId == subjectId,
+                                          c.examId == exam.id &&
+                                          c.classId == student?.classId &&
+                                          c.subjectId == subjectId,
                                     );
-                                    final record = _firstWhereOrNull(marks, (m) => m.examId == exam.id);
+                                    final record = _firstWhereOrNull(
+                                        marks, (m) => m.examId == exam.id);
                                     final hasMarks = cs != null &&
-                                        cs.components.any((c) => record?.componentMarks[subjectId]?[c.id] != null);
+                                        cs.components.any((c) =>
+                                            record?.componentMarks[subjectId]
+                                                ?[c.id] !=
+                                            null);
                                     if (!hasMarks) continue;
                                     if (!cs.approved) {
-                                      if (!pendingExamsBySubject.containsKey(subjectId)) {
+                                      if (!pendingExamsBySubject
+                                          .containsKey(subjectId)) {
                                         pendingSubjectIds.add(subjectId);
                                         pendingExamsBySubject[subjectId] = [];
                                       }
-                                      pendingExamsBySubject[subjectId]!.add(exam);
+                                      pendingExamsBySubject[subjectId]!
+                                          .add(exam);
                                       continue;
                                     }
-                                    if (!examsBySubject.containsKey(subjectId)) {
+                                    if (!examsBySubject
+                                        .containsKey(subjectId)) {
                                       subjectIds.add(subjectId);
                                       examsBySubject[subjectId] = [];
                                     }
@@ -128,12 +148,15 @@ class ReportCardView extends StatelessWidget {
                                         Expanded(
                                           child: _SummaryTile(
                                             label: 'Overall Average',
-                                            value: '${summary.averagePercentage.toStringAsFixed(1)}%',
+                                            value:
+                                                '${summary.averagePercentage.toStringAsFixed(1)}%',
                                           ),
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
-                                          child: _SummaryTile(label: 'Overall Grade', value: summary.overallGrade),
+                                          child: _SummaryTile(
+                                              label: 'Overall Grade',
+                                              value: summary.overallGrade),
                                         ),
                                       ],
                                     ),
@@ -142,9 +165,11 @@ class ReportCardView extends StatelessWidget {
                                     const SizedBox(height: 16),
                                     for (final subjectId in pendingSubjectIds)
                                       _PendingApprovalTile(
-                                        subject: _firstWhereOrNull(subjects, (s) => s.id == subjectId),
+                                        subject: _firstWhereOrNull(
+                                            subjects, (s) => s.id == subjectId),
                                         subjectId: subjectId,
-                                        exams: pendingExamsBySubject[subjectId]!,
+                                        exams:
+                                            pendingExamsBySubject[subjectId]!,
                                       ),
                                     for (final subjectId in subjectIds)
                                       _SubjectCard(
@@ -177,7 +202,8 @@ class ReportCardView extends StatelessWidget {
 }
 
 class _PendingApprovalTile extends StatelessWidget {
-  const _PendingApprovalTile({required this.subject, required this.subjectId, required this.exams});
+  const _PendingApprovalTile(
+      {required this.subject, required this.subjectId, required this.exams});
 
   final Subject? subject;
   final String subjectId;
@@ -205,7 +231,10 @@ class _PendingApprovalTile extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             'Pending approval',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.amber.shade800),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.amber.shade800),
           ),
         ],
       ),
@@ -244,7 +273,8 @@ class _GradingScaleCard extends StatelessWidget {
               children: [
                 for (final g in gradingScale)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(999),
@@ -252,8 +282,13 @@ class _GradingScaleCard extends StatelessWidget {
                     child: Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(text: '${g.grade}  ', style: const TextStyle(fontWeight: FontWeight.w700)),
-                          TextSpan(text: g.range, style: TextStyle(color: Colors.grey.shade600)),
+                          TextSpan(
+                              text: '${g.grade}  ',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700)),
+                          TextSpan(
+                              text: g.range,
+                              style: TextStyle(color: Colors.grey.shade600)),
                         ],
                       ),
                       style: const TextStyle(fontSize: 12),
@@ -322,7 +357,8 @@ class _SubjectCard extends StatelessWidget {
     final subject = _firstWhereOrNull(subjects, (s) => s.id == subjectId);
     final teacher = _firstWhereOrNull(
       teachers,
-      (t) => t.assignments.any((a) => a.classId == studentClassId && a.subjectId == subjectId),
+      (t) => t.assignments
+          .any((a) => a.classId == studentClassId && a.subjectId == subjectId),
     );
 
     // Scheduling is grade-wide; the student's actual section still
@@ -331,11 +367,15 @@ class _SubjectCard extends StatelessWidget {
     for (final exam in exams) {
       final componentSet = _firstWhereOrNull(
         componentSets,
-        (cs) => cs.examId == exam.id && cs.classId == studentClassId && cs.subjectId == subjectId,
+        (cs) =>
+            cs.examId == exam.id &&
+            cs.classId == studentClassId &&
+            cs.subjectId == subjectId,
       );
       if (componentSet == null || componentSet.components.isEmpty) continue;
       final record = _firstWhereOrNull(marks, (m) => m.examId == exam.id);
-      final result = computeSubjectResult(subjectId, componentSet.components, record?.componentMarks[subjectId]);
+      final result = computeSubjectResult(subjectId, componentSet.components,
+          record?.componentMarks[subjectId]);
       if (!result.components.any((c) => c.present)) continue;
       graded.add((exam, record, result));
     }
@@ -344,7 +384,11 @@ class _SubjectCard extends StatelessWidget {
     // with multiple exams (CAT + Mid-term, say) still ends in a single
     // bottom-line figure instead of leaving the reader to add up several
     // same-labeled "Total" rows themselves.
-    var combinedMax = 0.0, combinedWeightage = 0.0, combinedScored = 0.0, combinedWeightageMark = 0.0, combinedLost = 0.0;
+    var combinedMax = 0.0,
+        combinedWeightage = 0.0,
+        combinedScored = 0.0,
+        combinedWeightageMark = 0.0,
+        combinedLost = 0.0;
     for (final (_, _, result) in graded) {
       combinedMax += result.totalMax;
       combinedWeightage += result.totalWeightage;
@@ -352,7 +396,9 @@ class _SubjectCard extends StatelessWidget {
       combinedWeightageMark += result.totalWeightageMark;
       combinedLost += result.lostWeightage;
     }
-    final combinedPercentage = combinedWeightage > 0 ? (combinedWeightageMark / combinedWeightage) * 100 : 0.0;
+    final combinedPercentage = combinedWeightage > 0
+        ? (combinedWeightageMark / combinedWeightage) * 100
+        : 0.0;
     final combinedGrade = gradeForPercentage(combinedPercentage);
 
     return Card(
@@ -368,19 +414,29 @@ class _SubjectCard extends StatelessWidget {
             child: Wrap(
               spacing: 12,
               children: [
-                Text(subject?.code ?? subjectId, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                Text(subject?.code ?? subjectId,
+                    style: const TextStyle(color: Colors.white, fontSize: 12)),
                 Text(
                   subject?.name ?? '—',
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600),
                 ),
                 if (classLabel != null)
-                  Text(classLabel!.label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                if (teacher != null) Text(teacher.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  Text(classLabel!.label,
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 12)),
+                if (teacher != null)
+                  Text(teacher.name,
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 12)),
               ],
             ),
           ),
           for (final (exam, record, result) in graded)
-            _ExamSection(exam: exam, remark: record?.remarks[subjectId], result: result),
+            _ExamSection(
+                exam: exam, remark: record?.remarks[subjectId], result: result),
           if (graded.isNotEmpty)
             Container(
               width: double.infinity,
@@ -397,7 +453,8 @@ class _SubjectCard extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  Text(combinedGrade, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(combinedGrade,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -445,7 +502,8 @@ class _ExamSection extends StatelessWidget {
                       Expanded(flex: 3, child: Text(c.title)),
                       Expanded(
                         flex: 2,
-                        child: Text('${c.scored?.toStringAsFixed(1) ?? '—'} / ${c.maxMark}'),
+                        child: Text(
+                            '${c.scored?.toStringAsFixed(1) ?? '—'} / ${c.maxMark}'),
                       ),
                       Expanded(
                         flex: 2,
