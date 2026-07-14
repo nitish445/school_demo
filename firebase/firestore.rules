@@ -272,6 +272,19 @@ service cloud.firestore {
         allow delete: if isAdmin(schoolId) || isMyClass(schoolId, resource.data.classId);
       }
 
+      // ---- staff attendance (teacher GPS punch in/out, one doc per
+      // teacher per day, id `{teacherId}_{date}`) ----
+
+      match /staffAttendance/{recordId} {
+        allow read: if isAdmin(schoolId)
+          || (signedIn() && resource.data.teacherId == request.auth.uid);
+        allow create: if isAdmin(schoolId)
+          || (isTeacher(schoolId) && request.resource.data.teacherId == request.auth.uid);
+        allow update: if isAdmin(schoolId)
+          || (isTeacher(schoolId) && resource.data.teacherId == request.auth.uid);
+        allow delete: if isAdmin(schoolId);
+      }
+
       // ---- homework ----
 
       match /homework/{homeworkId} {

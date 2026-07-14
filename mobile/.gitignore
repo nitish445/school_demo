@@ -6,6 +6,7 @@
 .pub/
 build/
 *.iml
+.idea/
 android/
 ios/
 web/

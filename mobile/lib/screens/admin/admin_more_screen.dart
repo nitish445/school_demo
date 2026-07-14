@@ -8,6 +8,7 @@ import 'admin_exams_screen.dart';
 import 'admin_fees_screen.dart';
 import 'admin_homework_screen.dart';
 import 'admin_profile_screen.dart';
+import 'admin_staff_attendance_screen.dart';
 import 'admin_timetable_screen.dart';
 
 class _MoreItem {
@@ -37,6 +38,8 @@ class AdminMoreScreen extends StatelessWidget {
           (_) => AdminAnnouncementsScreen(schoolId: schoolId)),
       _MoreItem(Icons.schedule_outlined, 'Timetable',
           (_) => AdminTimetableScreen(schoolId: schoolId)),
+      _MoreItem(Icons.fingerprint, 'Staff Attendance',
+          (_) => AdminStaffAttendanceScreen(schoolId: schoolId)),
       _MoreItem(Icons.calendar_month_outlined, 'Calendar',
           (_) => AdminCalendarScreen(schoolId: schoolId)),
       _MoreItem(Icons.admin_panel_settings_outlined, 'Admins',

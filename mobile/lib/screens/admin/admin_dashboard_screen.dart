@@ -5,6 +5,7 @@ import '../../models/models.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/leave_service.dart';
+import '../../services/schedule_utils.dart';
 import '../../widgets/stat_card.dart';
 
 String _todayIso() => DateTime.now().toIso8601String().substring(0, 10);
@@ -151,6 +152,8 @@ class AdminDashboardScreen extends StatelessWidget {
                                           ),
                                         ],
                                       ),
+                                      const SizedBox(height: 16),
+                                      _OngoingClassesCard(schoolId: schoolId),
                                       const SizedBox(height: 16),
                                       Card(
                                         child: Padding(
@@ -387,6 +390,139 @@ class _PendingLeaveTile extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _OngoingRow {
+  _OngoingRow(
+      {required this.classLabel, required this.title, this.teacherName});
+
+  final String classLabel;
+  final String title;
+  final String? teacherName;
+}
+
+/// School-wide "what's being taught right now", one row per class currently
+/// in a period -- derived purely from each class's timetable doc, matched
+/// against the current day/time via schedule_utils.currentPeriod.
+class _OngoingClassesCard extends StatelessWidget {
+  const _OngoingClassesCard({required this.schoolId});
+
+  final String schoolId;
+
+  @override
+  Widget build(BuildContext context) {
+    final outline = Theme.of(context).colorScheme.outline;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: StreamBuilder<List<SchoolClass>>(
+          stream: FirestoreService.collectionStream(
+              'schools/$schoolId/classes', SchoolClass.fromMap),
+          builder: (context, classesSnap) {
+            final classes = [...(classesSnap.data ?? [])]
+              ..sort((a, b) => a.label.compareTo(b.label));
+            return StreamBuilder<List<Subject>>(
+              stream: FirestoreService.collectionStream(
+                  'schools/$schoolId/subjects', Subject.fromMap),
+              builder: (context, subjectsSnap) {
+                final subjects = subjectsSnap.data ?? [];
+                return StreamBuilder<List<Teacher>>(
+                  stream: FirestoreService.collectionStream(
+                      'schools/$schoolId/teachers', Teacher.fromMap),
+                  builder: (context, teachersSnap) {
+                    final teachers = teachersSnap.data ?? [];
+                    return StreamBuilder<List<Timetable>>(
+                      stream: FirestoreService.collectionStream(
+                          'schools/$schoolId/timetables', Timetable.fromMap),
+                      builder: (context, ttSnap) {
+                        final timetables = ttSnap.data ?? [];
+                        final now = DateTime.now();
+                        final rows = <_OngoingRow>[];
+                        for (final c in classes) {
+                          final tt = _firstWhereOrNull(
+                              timetables, (t) => t.id == c.id);
+                          if (tt == null) continue;
+                          final period = currentPeriod(tt.periods, now);
+                          if (period == null) continue;
+                          final subject = period.subjectId == null
+                              ? null
+                              : _firstWhereOrNull(
+                                  subjects, (s) => s.id == period.subjectId);
+                          final teacher = period.subjectId == null
+                              ? null
+                              : _firstWhereOrNull(
+                                  teachers,
+                                  (t) => t.assignments.any((a) =>
+                                      a.classId == c.id &&
+                                      a.subjectId == period.subjectId));
+                          rows.add(_OngoingRow(
+                            classLabel: c.label,
+                            title: subject?.name ??
+                                period.label ??
+                                'Class in session',
+                            teacherName: teacher?.name,
+                          ));
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.play_circle_outline,
+                                    size: 18, color: outline),
+                                const SizedBox(width: 8),
+                                Text('Ongoing Classes',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            if (rows.isEmpty)
+                              const Text('No classes in session right now.')
+                            else
+                              Column(
+                                children: [
+                                  for (var i = 0; i < rows.length; i++) ...[
+                                    if (i > 0) const Divider(height: 17),
+                                    Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 84,
+                                          child: Text(
+                                            rows[i].classLabel,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w600),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            '${rows[i].title}${rows[i].teacherName != null ? ' · ${rows[i].teacherName}' : ''}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 }

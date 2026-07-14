@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
 import '../../services/firestore_service.dart';
+import '../../services/schedule_utils.dart';
 import '../../widgets/timetable_view.dart';
 
 T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T) test) {
@@ -68,36 +69,13 @@ class TeacherTimetableScreen extends StatelessWidget {
                           // "My Timetable" -- only the periods I personally
                           // teach, merged across every class I'm assigned a
                           // subject in (including my own home room, if I
-                          // teach a subject there too). Each label is
-                          // rewritten to include the class since periods are
-                          // pooled from several classes.
-                          final myPeriods = <TimetablePeriod>[];
-                          for (final c in myClasses) {
-                            final mySubjectIds = teacher.assignments
-                                .where((a) => a.classId == c.id)
-                                .map((a) => a.subjectId)
-                                .toSet();
-                            final timetable = _firstWhereOrNull(
-                                timetables, (t) => t.id == c.id);
-                            for (final p
-                                in timetable?.periods ?? <TimetablePeriod>[]) {
-                              if (p.subjectId == null ||
-                                  !mySubjectIds.contains(p.subjectId)) continue;
-                              final subjectName = _firstWhereOrNull(
-                                          subjects, (s) => s.id == p.subjectId)
-                                      ?.name ??
-                                  p.subjectId!;
-                              myPeriods.add(
-                                TimetablePeriod(
-                                  day: p.day,
-                                  period: p.period,
-                                  label: '$subjectName (${c.label})',
-                                  startTime: p.startTime,
-                                  endTime: p.endTime,
-                                ),
-                              );
-                            }
-                          }
+                          // teach a subject there too).
+                          final myPeriods = myMergedPeriods(
+                            myClasses: myClasses,
+                            teacher: teacher,
+                            timetables: timetables,
+                            subjects: subjects,
+                          );
 
                           final homeRoomTimetable = homeRoomClass == null
                               ? null

@@ -742,3 +742,44 @@ class AuditLogEntry {
     );
   }
 }
+
+/// One teacher's daily punch-in/punch-out record, doc id `{teacherId}_{date}`.
+/// Location is logged for the admin's reference only -- punching in never
+/// blocks on distance from school (no geofence).
+class StaffAttendance {
+  final String id;
+  final String teacherId;
+  final String date;
+  final int? punchInAt;
+  final double? punchInLat;
+  final double? punchInLng;
+  final int? punchOutAt;
+  final double? punchOutLat;
+  final double? punchOutLng;
+
+  StaffAttendance({
+    required this.id,
+    required this.teacherId,
+    required this.date,
+    this.punchInAt,
+    this.punchInLat,
+    this.punchInLng,
+    this.punchOutAt,
+    this.punchOutLat,
+    this.punchOutLng,
+  });
+
+  factory StaffAttendance.fromMap(String id, Map<String, dynamic> map) {
+    return StaffAttendance(
+      id: id,
+      teacherId: map['teacherId'] as String? ?? '',
+      date: map['date'] as String? ?? '',
+      punchInAt: (map['punchInAt'] as num?)?.toInt(),
+      punchInLat: (map['punchInLat'] as num?)?.toDouble(),
+      punchInLng: (map['punchInLng'] as num?)?.toDouble(),
+      punchOutAt: (map['punchOutAt'] as num?)?.toInt(),
+      punchOutLat: (map['punchOutLat'] as num?)?.toDouble(),
+      punchOutLng: (map['punchOutLng'] as num?)?.toDouble(),
+    );
+  }
+}
